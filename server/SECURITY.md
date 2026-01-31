@@ -17,6 +17,3 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ## Git Hygiene
 - .env is ignored by .gitignore
 - Use .env.example for templates
-
-## Production
-Use your platform secrets manager (Docker env, VPS env, cloud secret store).

@@ -9,6 +9,7 @@ const documentRoutes = require('./routes/documentRoutes');
 const conceptRoutes = require('./routes/conceptRoutes');
 const authRoutes = require('./routes/authRoutes');
 const subjectRoutes = require('./routes/subjectRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/concepts', conceptRoutes);
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
   res.send('🚀 AI Personal Brain Server is running!');

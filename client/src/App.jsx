@@ -6,6 +6,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import * as d3 from 'd3-force';
 import AuthPage from './AuthPage';
 import Dashboard from './Dashboard';
+import VerifyEmail from './VerifyEmail';
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -58,6 +59,14 @@ function App() {
     headers: { Authorization: `Bearer ${token}` }
   });
 
+  const handleAuthExpired = (error) => {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      localStorage.clear();
+      setUser(null);
+    }
+  };
+
   // 1. LOAD DANH SÁCH MÔN HỌC KHI VÀO APP
   useEffect(() => {
     if (user && token) {
@@ -73,7 +82,10 @@ function App() {
           if (res.data.length > 0 && !selectedSubject) {
               handleSelectSubject(res.data[0]);
           }
-      } catch (e) { console.error("Lỗi load môn:", e); }
+      } catch (e) {
+        handleAuthExpired(e);
+        console.error("Lỗi load môn:", e);
+      }
   };
 
   const handleSelectSubject = async (subject) => {
@@ -352,7 +364,21 @@ function App() {
     }
   };
 
+  if (window.location.pathname.startsWith('/verify-email')) {
+    return <VerifyEmail />;
+  }
+
   if (!user) return <AuthPage onLoginSuccess={(u) => setUser(u)} />;
+
+  const handleUserUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
+  const getAvatarSrc = (avatarUrl) => {
+    if (!avatarUrl) return null;
+    return avatarUrl.startsWith('http') ? avatarUrl : `http://localhost:5000${avatarUrl}`;
+  };
 
   // Nếu đang ở dashboard, hiển thị dashboard
   if (currentView === 'dashboard') {
@@ -360,6 +386,7 @@ function App() {
       user={user} 
       onLogout={() => { localStorage.clear(); setUser(null); }}
       onReturnToApp={() => setCurrentView('app')}
+      onUserUpdate={handleUserUpdate}
     />;
   }
 
@@ -438,10 +465,10 @@ function App() {
                           {sub._count?.documents > 0 && <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded-full">{sub._count.documents}</span>}
                           <button
                             onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-900/30 p-1 rounded transition"
-                            title="Xóa môn học"
+                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-900/30 px-2 py-1 rounded transition flex items-center gap-1"
                           >
                             <Trash2 size={14} />
+                            <span className="text-[10px] font-bold">Xóa</span>
                           </button>
                       </div>
                   </div>
@@ -452,7 +479,17 @@ function App() {
           <div className="p-4 border-t border-slate-800 bg-slate-900/50">
               <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-bold text-xs">{user.name.charAt(0)}</div>
+                      {user.avatarUrl ? (
+                        <img
+                          src={getAvatarSrc(user.avatarUrl)}
+                          alt="avatar"
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-bold text-xs">
+                          {user.name.charAt(0)}
+                        </div>
+                      )}
                       <div className="text-sm font-medium truncate w-24">{user.name}</div>
                   </div>
                   <button onClick={() => { localStorage.clear(); setUser(null); }} className="text-slate-500 hover:text-red-400"><LogOut size={18} /></button>
@@ -499,7 +536,7 @@ function App() {
                  <ForceGraph2D
                     ref={graphRef}
                     graphData={graphData}
-                    nodeLabel="name"
+                  nodeLabel={() => ''}
                     nodeColor={node => node.color}
                     nodeRelSize={8}
                     linkColor={() => 'rgba(255,255,255,0.1)'}
@@ -507,16 +544,58 @@ function App() {
                     onNodeClick={handleNodeClick}
                     nodeCanvasObject={(node, ctx, globalScale) => {
                         const label = node.name;
-                        const fontSize = 12/globalScale;
-                        ctx.font = `${fontSize}px Sans-Serif`;
+                      const baseFontSize = 12 / globalScale;
                         ctx.fillStyle = node.id === selectedNode?.id ? 'rgba(59, 130, 246, 1)' : 'rgba(255, 255, 255, 0.6)';
                         ctx.beginPath();
-                        ctx.arc(node.x, node.y, node.val ? node.val * 0.4 : 5, 0, 2 * Math.PI, false);
+                    const radius = node.val ? node.val * 0.4 : 5;
+                    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
                         ctx.fillStyle = node.color;
                         ctx.fill();
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(label, node.x, node.y + (node.val ? node.val * 0.5 : 8));
+                      const maxWidth = radius * 1.8;
+                      let fontSize = baseFontSize;
+
+                      // Try to fit text by reducing font size (min 8px)
+                      ctx.font = `${fontSize}px Sans-Serif`;
+                      while (ctx.measureText(label).width > maxWidth && fontSize > 8 / globalScale) {
+                        fontSize -= 1 / globalScale;
+                        ctx.font = `${fontSize}px Sans-Serif`;
+                      }
+
+                      // If still too long, wrap into up to 2 lines
+                      const words = label.split(' ');
+                      const lines = [];
+                      let currentLine = '';
+
+                      words.forEach(word => {
+                        const testLine = currentLine ? `${currentLine} ${word}` : word;
+                        if (ctx.measureText(testLine).width <= maxWidth) {
+                          currentLine = testLine;
+                        } else {
+                          if (currentLine) lines.push(currentLine);
+                          currentLine = word;
+                        }
+                      });
+                      if (currentLine) lines.push(currentLine);
+
+                      // Limit to 2 lines; if more, truncate last line
+                      const displayLines = lines.slice(0, 2);
+                      if (lines.length > 2) {
+                        const last = displayLines[1];
+                        let trimmed = last;
+                        while (ctx.measureText(`${trimmed}…`).width > maxWidth && trimmed.length > 1) {
+                          trimmed = trimmed.slice(0, -1);
+                        }
+                        displayLines[1] = `${trimmed}…`;
+                      }
+
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                      const lineHeight = fontSize * 1.1;
+                      const startY = node.y - (displayLines.length - 1) * lineHeight * 0.5;
+                      displayLines.forEach((line, i) => {
+                        ctx.fillText(line, node.x, startY + i * lineHeight);
+                      });
                     }}
                 />
              ) : (
