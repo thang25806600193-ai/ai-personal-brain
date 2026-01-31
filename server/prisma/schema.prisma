@@ -1,5 +1,3 @@
-// server/prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,18 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. Người dùng (Sinh viên)
 model User {
-  id        String    @id @default(uuid()) // ID dạng chuỗi ngẫu nhiên
+  id        String    @id @default(uuid())
   email     String    @unique
-  password  String    // Sẽ mã hóa sau
+  password  String
   name      String?
   createdAt DateTime  @default(now())
-  
-  subjects  Subject[] // Một SV có nhiều môn học
+  subjects  Subject[]
 }
 
-// 2. Môn học (Ví dụ: Lập trình Web, Triết học...)
 model Subject {
   id          String     @id @default(uuid())
   name        String
@@ -28,45 +23,36 @@ model Subject {
   userId      String
   user        User       @relation(fields: [userId], references: [id])
   createdAt   DateTime   @default(now())
-
-  documents   Document[] // Một môn có nhiều tài liệu PDF
+  documents   Document[]
 }
 
-// 3. Tài liệu gốc (File PDF)
 model Document {
   id        String    @id @default(uuid())
   title     String
-  filePath  String    // Đường dẫn file trên server
+  filePath  String
   fileSize  Int?
   subjectId String
   subject   Subject   @relation(fields: [subjectId], references: [id])
   uploadedAt DateTime @default(now())
-
-  concepts  Concept[] // Một tài liệu chứa nhiều khái niệm
+  concepts  Concept[]
 }
 
-// 4. Khái niệm (Node trong Knowledge Graph)
-// Đây là phần quan trọng nhất để vẽ sơ đồ
 model Concept {
   id          String   @id @default(uuid())
-  term        String   // Tên khái niệm (VD: "ReactJS")
-  definition  String   // Định nghĩa tóm tắt
-  pageNumber  Int      // Số trang trong PDF (Để click nhảy tới)
+  term        String
+  definition  String
+  pageNumber  Int
   documentId  String
   document    Document @relation(fields: [documentId], references: [id])
-  
-  // Quan hệ giữa các khái niệm (Concept A liên quan Concept B)
   relatedFrom Relation[] @relation("SourceConcept")
   relatedTo   Relation[] @relation("TargetConcept")
 }
 
-// 5. Mối quan hệ (Cạnh nối trong Graph)
 model Relation {
   id        String  @id @default(uuid())
   sourceId  String
   targetId  String
-  type      String? // Loại quan hệ (VD: "là thành phần của", "tương tự")
-
+  type      String?
   source    Concept @relation("SourceConcept", fields: [sourceId], references: [id])
   target    Concept @relation("TargetConcept", fields: [targetId], references: [id])
 }
