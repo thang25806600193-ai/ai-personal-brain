@@ -9,6 +9,7 @@ const AuthPage = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
   const [nodes, setNodes] = useState([]);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     // Tạo các node ngẫu nhiên
@@ -38,7 +39,9 @@ const AuthPage = ({ onLoginSuccess }) => {
         localStorage.setItem('user', JSON.stringify(res.data.user));
         onLoginSuccess(res.data.user);
       } else {
-        alert("Đăng ký thành công! Vui lòng đăng nhập.");
+        // Giả sử bạn đã gửi email xác thực thành công
+        setEmailSent(true);
+        alert("Đăng ký thành công! Vui lòng kiểm tra hộp thư của bạn để xác thực.");
         setIsLogin(true);
       }
     } catch (err) {
