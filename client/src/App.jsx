@@ -11,6 +11,7 @@ import NodeInfoPanel from './components/panels/NodeInfoPanel';
 import PdfPanel from './components/panels/PdfPanel';
 import ChatPanel from './components/panels/ChatPanel';
 import DocumentListPanel from './components/panels/DocumentListPanel';
+import AddConceptPanel from './components/panels/AddConceptPanel';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -49,6 +50,14 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  
+  // --- STATE ADD CONCEPT ---
+  const [isAddConceptOpen, setIsAddConceptOpen] = useState(false);
+
+  // --- STATE SEARCH NODE ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   const graphRef = useRef();
   const token = localStorage.getItem('token');
@@ -263,11 +272,19 @@ function App() {
     }
   };
 
-  const handleDeleteConcept = async (conceptId) => {
+  const handleDeleteConcept = async (conceptNode) => {
     if (!window.confirm('Bạn chắc chắn muốn xóa khái niệm này?')) return;
     
     try {
-      await api.delete(`/concepts/${conceptId}`);
+      if (!selectedSubject) return;
+
+      const term = conceptNode?.name || conceptNode?.term;
+      if (!term) return;
+
+      await api.post('/concepts/delete-by-term', {
+        subjectId: selectedSubject.id,
+        term,
+      });
       
       // Refresh graph
       if (selectedSubject) {
@@ -327,7 +344,7 @@ function App() {
   };
 
   const handleNodeClick = useCallback((node) => {
-    if (node.type === 'Source') return;
+    if (node.type === 'Source' || node.type === 'PersonalNotes') return;
     setSelectedNode(node);
     localStorage.setItem('selectedNode', JSON.stringify(node));
     // Không tự động mở PDF - chỉ hiển thị thông tin
@@ -371,6 +388,127 @@ function App() {
     setIsPdfOpen(true);
     localStorage.setItem('isPdfOpen', JSON.stringify(true));
     setIsDocumentListOpen(false);
+  };
+
+  const handleRequestSuggestions = async (noteText) => {
+    if (!selectedSubject) return { suggestions: [], newConceptCandidates: [] };
+    
+    try {
+      const res = await api.post('/concepts/suggest-links', {
+        subjectId: selectedSubject.id,
+        noteText,
+        threshold: 0.6,
+        limit: 5,
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Lỗi gợi ý:', error);
+      throw error;
+    }
+  };
+
+  const handleCreateManualConcept = async (data) => {
+    if (!selectedSubject) return;
+    
+    try {
+      await api.post('/concepts/manual', {
+        subjectId: selectedSubject.id,
+        ...data,
+      });
+      
+      // Refresh graph
+      await handleSelectSubject(selectedSubject);
+      alert('✅ Tạo khái niệm thành công!');
+    } catch (error) {
+      console.error('Lỗi tạo concept:', error);
+      throw error;
+    }
+  };
+
+  const handleSearchConcepts = async (term) => {
+    if (!selectedSubject) return [];
+
+    try {
+      const res = await api.post('/concepts/search', {
+        subjectId: selectedSubject.id,
+        term,
+      });
+      return res.data || [];
+    } catch (error) {
+      console.error('Lỗi search:', error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedSubject) return;
+
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    const debounce = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await handleSearchConcepts(query);
+        setSearchResults(res || []);
+      } catch (error) {
+        console.error('Lỗi search:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [searchQuery, selectedSubject]);
+
+  const handleSelectSearchResult = (item) => {
+    const node = graphData.nodes.find((n) => n.name === item.term);
+    if (node) {
+      setSelectedNode(node);
+      localStorage.setItem('selectedNode', JSON.stringify(node));
+    } else {
+      const fallbackNode = {
+        id: item.term,
+        name: item.term,
+        definition: item.definition || 'Chưa có định nghĩa',
+        type: 'Concept',
+      };
+      setSelectedNode(fallbackNode);
+      localStorage.setItem('selectedNode', JSON.stringify(fallbackNode));
+    }
+
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleUpdateConcept = async ({ currentTerm, newTerm, definition, example }) => {
+    if (!selectedSubject) return;
+
+    try {
+      await api.post('/concepts/update-by-term', {
+        subjectId: selectedSubject.id,
+        currentTerm,
+        newTerm,
+        definition,
+        example,
+      });
+
+      // Reload subject data to reflect changes
+      await handleSelectSubject(selectedSubject);
+      
+      // Clear selected node and search to see fresh data
+      setSelectedNode(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      
+      alert('✅ Cập nhật khái niệm thành công!');
+    } catch (error) {
+      console.error('Lỗi cập nhật:', error);
+      throw error;
+    }
   };
 
   if (window.location.pathname.startsWith('/verify-email')) {
@@ -428,6 +566,12 @@ function App() {
           loading={loading}
           onLoadDocuments={loadDocuments}
           onFileUpload={handleFileUpload}
+          onAddConcept={() => setIsAddConceptOpen(true)}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          searchResults={searchResults}
+          onSelectSearchResult={handleSelectSearchResult}
+          isSearching={isSearching}
         />
 
         <GraphView
@@ -449,6 +593,7 @@ function App() {
           }}
           onViewInDocument={handleViewInDocument}
           onDeleteConcept={handleDeleteConcept}
+          onUpdateConcept={handleUpdateConcept}
           onOpenDocumentList={() => selectedSubject && loadDocuments(selectedSubject.id)}
         />
       )}
@@ -481,6 +626,18 @@ function App() {
           documents={documents}
           onClose={() => setIsDocumentListOpen(false)}
           onSelectDocument={handleSelectDocumentFromList}
+        />
+      )}
+
+      {/* 7. PANEL THÊM KHÁI NIỆM THỦ CÔNG */}
+      {isAddConceptOpen && selectedSubject && (
+        <AddConceptPanel
+          selectedSubject={selectedSubject}
+          documents={documents}
+          onClose={() => setIsAddConceptOpen(false)}
+          onCreateConcept={handleCreateManualConcept}
+          onRequestSuggestions={handleRequestSuggestions}
+          onSearchConcepts={handleSearchConcepts}
         />
       )}
 

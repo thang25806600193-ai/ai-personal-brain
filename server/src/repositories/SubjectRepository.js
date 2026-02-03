@@ -92,7 +92,15 @@ class SubjectRepository extends BaseRepository {
       where: { subjectId },
     });
 
-    return { concepts, documents };
+    const relations = await this.prisma.relation.findMany({
+      where: {
+        source: { document: { subjectId } },
+        target: { document: { subjectId } },
+      },
+      select: { sourceId: true, targetId: true, type: true },
+    });
+
+    return { concepts, documents, relations };
   }
 }
 

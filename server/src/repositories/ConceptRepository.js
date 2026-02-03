@@ -38,6 +38,13 @@ class ConceptRepository extends BaseRepository {
   }
 
   async delete(id) {
+    const existing = await this.prisma.concept.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) return null;
+
     // Xóa tất cả relations
     await this.prisma.relation.deleteMany({
       where: {
@@ -50,10 +57,70 @@ class ConceptRepository extends BaseRepository {
     });
   }
 
+  async deleteByTermInSubject(term, subjectId) {
+    const concepts = await this.prisma.concept.findMany({
+      where: {
+        term: { equals: term, mode: 'insensitive' },
+        document: { subjectId },
+      },
+      select: { id: true },
+    });
+
+    if (concepts.length === 0) return 0;
+
+    const conceptIds = concepts.map((c) => c.id);
+
+    await this.prisma.relation.deleteMany({
+      where: {
+        OR: [
+          { sourceId: { in: conceptIds } },
+          { targetId: { in: conceptIds } },
+        ],
+      },
+    });
+
+    const result = await this.prisma.concept.deleteMany({
+      where: { id: { in: conceptIds } },
+    });
+
+    return result.count || 0;
+  }
+
+  async updateByTermInSubject(subjectId, currentTerm, data) {
+    const updateData = {};
+    if (data?.term) updateData.term = data.term;
+    if (typeof data?.definition === 'string') updateData.definition = data.definition;
+    if (data?.example !== undefined) updateData.example = data.example;
+
+    if (Object.keys(updateData).length === 0) return 0;
+
+    const result = await this.prisma.concept.updateMany({
+      where: {
+        term: { equals: currentTerm, mode: 'insensitive' },
+        document: { subjectId },
+      },
+      data: updateData,
+    });
+
+    return result.count || 0;
+  }
+
+  async createRelation(sourceId, targetId, type = 'related') {
+    const existing = await this.prisma.relation.findFirst({
+      where: { sourceId, targetId, type },
+    });
+
+    if (existing) return existing;
+
+    return await this.prisma.relation.create({
+      data: { sourceId, targetId, type },
+    });
+  }
+
   async findByTermInSubject(term, subjectId) {
     return await this.prisma.concept.findMany({
       where: {
-        term: { contains: term },
+        term: { contains: term, mode: 'insensitive' },
         document: { subjectId },
       },
       include: {

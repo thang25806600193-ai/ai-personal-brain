@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { BrainCircuit } from 'lucide-react';
 
@@ -9,12 +9,33 @@ export default function GraphView({
   selectedNode,
   onNodeClick,
 }) {
+  const containerRef = useRef(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateSize = () => {
+      const { clientWidth, clientHeight } = containerRef.current;
+      setSize({ width: clientWidth, height: clientHeight });
+    };
+
+    updateSize();
+
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex-1 relative overflow-hidden">
+    <div ref={containerRef} className="flex-1 relative overflow-hidden">
       {selectedSubject ? (
         <ForceGraph2D
           ref={graphRef}
           graphData={graphData}
+          width={size.width}
+          height={size.height}
           nodeLabel={() => ''}
           nodeColor={node => node.color}
           nodeRelSize={8}

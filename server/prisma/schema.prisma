@@ -48,6 +48,7 @@ model Concept {
   id          String   @id @default(uuid())
   term        String
   definition  String
+  example     String?
   pageNumber  Int
   documentId  String
   document    Document @relation(fields: [documentId], references: [id])

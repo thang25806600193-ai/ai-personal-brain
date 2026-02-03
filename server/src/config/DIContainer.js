@@ -120,7 +120,10 @@ class DIContainer {
   getConceptService() {
     if (!this.instances.conceptService) {
       this.instances.conceptService = new ConceptService(
-        this.getConceptRepository()
+        this.getConceptRepository(),
+        this.getDocumentRepository(),
+        this.getSubjectRepository(),
+        this.getAIService()
       );
     }
     return this.instances.conceptService;

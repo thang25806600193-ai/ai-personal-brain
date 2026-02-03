@@ -51,9 +51,17 @@ class DocumentRepository extends BaseRepository {
   }
 
   async delete(id) {
-    return await this.prisma.document.delete({
-      where: { id },
-    });
+    try {
+      return await this.prisma.document.delete({
+        where: { id },
+      });
+    } catch (error) {
+      // If document doesn't exist (P2025), return null instead of throwing
+      if (error.code === 'P2025') {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async findConceptsByDocumentId(documentId) {
@@ -64,6 +72,12 @@ class DocumentRepository extends BaseRepository {
 
   async deleteWithRelations(id) {
     const document = await this.findById(id);
+    
+    // If document doesn't exist, return null
+    if (!document) {
+      return null;
+    }
+    
     const concepts = await this.findConceptsByDocumentId(id);
 
     // Xóa tất cả relations liên quan
@@ -84,6 +98,29 @@ class DocumentRepository extends BaseRepository {
     await this.delete(id);
 
     return document;
+  }
+
+  /**
+   * Tìm hoặc tạo document "Ghi chú cá nhân" cho subject
+   */
+  async findOrCreatePersonalNotes(subjectId) {
+    const existingDoc = await this.prisma.document.findFirst({
+      where: {
+        subjectId,
+        title: '📝 Ghi chú cá nhân',
+      },
+    });
+
+    if (existingDoc) return existingDoc;
+
+    return await this.prisma.document.create({
+      data: {
+        title: '📝 Ghi chú cá nhân',
+        filePath: '__personal_notes__',
+        fileSize: 0,
+        subjectId,
+      },
+    });
   }
 }
 

@@ -53,47 +53,55 @@ class AIService {
   }
 
   /**
+   * Tokenize text: normalize + split + remove stopwords
+   */
+  tokenize(text) {
+    const normalized = this.normalizeText(text);
+    const words = normalized
+      .split(/\s+/)
+      .map((w) => w.trim())
+      .filter((word) => word.length > 2);
+
+    // Stopwords tiếng Việt
+    const stopwords = new Set([
+      'la',
+      'cua',
+      'trong',
+      'nao',
+      'the',
+      'cai',
+      'no',
+      'duoc',
+      'lam',
+      'co',
+      'khong',
+      'va',
+      'hay',
+      'hoac',
+      'voi',
+      'tu',
+      'den',
+      'khac',
+      'giua',
+      'so',
+      'sanh',
+      'tuong',
+      'ung',
+      'hon',
+      'kem',
+    ]);
+
+    return words.filter((word) => !stopwords.has(word));
+  }
+
+  /**
    * Trích xuất khái niệm từ câu hỏi dựa trên Knowledge Graph
    */
   async extractConceptsFromQuestion(question, conceptsInDB) {
     try {
       console.log('🔍 Phân tích câu hỏi bằng Knowledge Graph + NLP...');
 
-      const normalized = this.normalizeText(question);
-      const words = normalized
-        .split(/\s+/)
-        .filter((word) => word.length > 2);
-
-      // Stopwords tiếng Việt
-      const stopwords = new Set([
-        'la',
-        'cua',
-        'trong',
-        'nao',
-        'the',
-        'cai',
-        'no',
-        'duoc',
-        'lam',
-        'co',
-        'khong',
-        'va',
-        'hay',
-        'hoac',
-        'voi',
-        'tu',
-        'den',
-        'khac',
-        'giua',
-        'so',
-        'sanh',
-        'tuong',
-        'ung',
-        'hon',
-        'kem',
-      ]);
-
-      const keywords = words.filter((word) => !stopwords.has(word));
+      const keywords = this.tokenize(question);
 
       // Đối chiếu với Knowledge Graph
       const matches = conceptsInDB.filter((concept) => {
@@ -114,6 +122,68 @@ class AIService {
       return [];
     }
   }
+
+  /**
+   * Gợi ý liên kết concept cho note (NLP nhẹ, không dùng LLM)
+   */
+  suggestLinksForNote(noteText, conceptsInDB, options = {}) {
+    const threshold = options.threshold ?? 0.6;
+    const limit = options.limit ?? 5;
+
+    const noteTokens = this.tokenize(noteText);
+    const noteNormalized = this.normalizeText(noteText);
+
+    const suggestions = conceptsInDB
+      .map((concept) => {
+        const termNormalized = this.normalizeText(concept.term);
+        const termTokens = termNormalized.split(/\s+/).filter(Boolean);
+
+        let score = 0;
+        let matchedBy = 'token';
+
+        if (termNormalized.length > 0 && noteNormalized.includes(termNormalized)) {
+          score = 1;
+          matchedBy = 'phrase';
+        } else if (termTokens.length > 0) {
+          const matchedTokens = termTokens.filter((t) => noteTokens.includes(t));
+          score = matchedTokens.length / termTokens.length;
+        }
+
+        return {
+          conceptId: concept.id,
+          term: concept.term,
+          score: Number(score.toFixed(2)),
+          matchedBy,
+        };
+      })
+      .filter((s) => s.score >= threshold)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    const conceptTokens = new Set(
+      conceptsInDB
+        .flatMap((c) => this.tokenize(c.term))
+        .filter(Boolean)
+    );
+
+    const newConceptCandidates = noteTokens
+      .filter((t) => !conceptTokens.has(t))
+      .slice(0, 5);
+
+    const shouldSuggestNewNode = suggestions.length === 0 && newConceptCandidates.length > 0;
+
+    return {
+      suggestions,
+      newConceptCandidates,
+      shouldSuggestNewNode,
+      reasoning: shouldSuggestNewNode
+        ? 'Không có node phù hợp → đề xuất tạo node mới'
+        : 'Có node phù hợp → đề xuất liên kết',
+    };
+  }
 }
+
+module.exports = AIService;
+
 
 module.exports = AIService;
