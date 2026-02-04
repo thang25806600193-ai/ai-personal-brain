@@ -49,28 +49,32 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
         <div className="text-xs text-slate-500 font-bold uppercase tracking-wider px-2 mb-2">Môn học của tôi</div>
 
-        {isCreatingSubject ? (
-          <div className="bg-slate-800 p-2 rounded-lg animate-in fade-in">
-            <input
-              autoFocus
-              className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mb-2 focus:ring-1 focus:ring-blue-500 outline-none"
-              placeholder="Tên môn..."
-              value={newSubjectName}
-              onChange={e => onNewSubjectNameChange(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && onCreateSubject()}
-            />
-            <div className="flex gap-2 text-xs">
-              <button onClick={onCreateSubject} className="bg-blue-600 px-2 py-1 rounded hover:bg-blue-500">Tạo</button>
-              <button onClick={onCreateSubjectCancel} className="bg-slate-700 px-2 py-1 rounded hover:bg-slate-600">Hủy</button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={onCreateSubjectStart}
-            className="w-full flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg transition text-sm mb-2 border border-dashed border-slate-700"
-          >
-            <FolderPlus size={16} /> Thêm môn học
-          </button>
+        {!selectedSubject?.isShared && (
+          <>
+            {isCreatingSubject ? (
+              <div className="bg-slate-800 p-2 rounded-lg animate-in fade-in">
+                <input
+                  autoFocus
+                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mb-2 focus:ring-1 focus:ring-blue-500 outline-none"
+                  placeholder="Tên môn..."
+                  value={newSubjectName}
+                  onChange={e => onNewSubjectNameChange(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && onCreateSubject()}
+                />
+                <div className="flex gap-2 text-xs">
+                  <button onClick={onCreateSubject} className="bg-blue-600 px-2 py-1 rounded hover:bg-blue-500">Tạo</button>
+                  <button onClick={onCreateSubjectCancel} className="bg-slate-700 px-2 py-1 rounded hover:bg-slate-600">Hủy</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={onCreateSubjectStart}
+                className="w-full flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg transition text-sm mb-2 border border-dashed border-slate-700"
+              >
+                <FolderPlus size={16} /> Thêm môn học
+              </button>
+            )}
+          </>
         )}
 
         {subjects.map(sub => (
@@ -90,13 +94,15 @@ export default function Sidebar({
               {sub._count?.documents > 0 && (
                 <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded-full">{sub._count.documents}</span>
               )}
-              <button
-                onClick={() => onDeleteSubject(sub.id, sub.name)}
-                className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-900/30 px-2 py-1 rounded transition flex items-center gap-1"
-              >
-                <Trash2 size={14} />
-                <span className="text-[10px] font-bold">Xóa</span>
-              </button>
+              {!selectedSubject?.isShared && (
+                <button
+                  onClick={() => onDeleteSubject(sub.id, sub.name)}
+                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-900/30 px-2 py-1 rounded transition flex items-center gap-1"
+                >
+                  <Trash2 size={14} />
+                  <span className="text-[10px] font-bold">Xóa</span>
+                </button>
+              )}
             </div>
           </div>
         ))}

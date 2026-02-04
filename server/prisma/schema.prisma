@@ -21,6 +21,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
   subjects  Subject[]
+  sharedWithMe SharedWithUser[] @relation("SharedWith")
 }
 
 model Subject {
@@ -31,6 +32,8 @@ model Subject {
   user        User       @relation(fields: [userId], references: [id])
   createdAt   DateTime   @default(now())
   documents   Document[]
+  shares      Share[]
+  sharedWith  SharedWithUser[]
 }
 
 model Document {
@@ -63,4 +66,26 @@ model Relation {
   type      String?
   source    Concept @relation("SourceConcept", fields: [sourceId], references: [id])
   target    Concept @relation("TargetConcept", fields: [targetId], references: [id])
+}
+
+model Share {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId   String
+  shareType   String   // "public" hoặc "private"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SharedWithUser {
+  id          String   @id @default(uuid())
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId   String
+  user        User     @relation("SharedWith", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  permission  String   @default("view") // "view" only
+  createdAt   DateTime @default(now())
+
+  @@unique([subjectId, userId])
 }

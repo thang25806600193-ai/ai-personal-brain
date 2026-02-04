@@ -11,6 +11,8 @@ const UserRepository = require('../repositories/UserRepository');
 const SubjectRepository = require('../repositories/SubjectRepository');
 const DocumentRepository = require('../repositories/DocumentRepository');
 const ConceptRepository = require('../repositories/ConceptRepository');
+const ShareRepository = require('../repositories/ShareRepository');
+const SharedWithUserRepository = require('../repositories/SharedWithUserRepository');
 
 // Services
 const AuthService = require('../services/authService');
@@ -21,6 +23,7 @@ const ConceptService = require('../services/conceptService');
 const QAService = require('../services/qaService');
 const AIService = require('../services/aiService');
 const UploadService = require('../services/uploadService');
+const ShareService = require('../services/shareService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -28,6 +31,7 @@ const AuthController = require('../controllers/authController');
 const UserController = require('../controllers/userController');
 const SubjectController = require('../controllers/subjectController');
 const DocumentController = require('../controllers/documentController');
+const ShareController = require('../controllers/shareController');
 const ConceptController = require('../controllers/conceptController');
 
 class DIContainer {
@@ -65,6 +69,20 @@ class DIContainer {
       this.instances.conceptRepository = new ConceptRepository(this.prisma);
     }
     return this.instances.conceptRepository;
+  }
+
+  getShareRepository() {
+    if (!this.instances.shareRepository) {
+      this.instances.shareRepository = new ShareRepository(this.prisma);
+    }
+    return this.instances.shareRepository;
+  }
+
+  getSharedWithUserRepository() {
+    if (!this.instances.sharedWithUserRepository) {
+      this.instances.sharedWithUserRepository = new SharedWithUserRepository(this.prisma);
+    }
+    return this.instances.sharedWithUserRepository;
   }
 
   /**
@@ -129,6 +147,19 @@ class DIContainer {
     return this.instances.conceptService;
   }
 
+  getShareService() {
+    if (!this.instances.shareService) {
+      this.instances.shareService = new ShareService(
+        this.getShareRepository(),
+        this.getSubjectRepository(),
+        this.getSubjectService(),
+        this.getSharedWithUserRepository(),
+        this.getUserRepository()
+      );
+    }
+    return this.instances.shareService;
+  }
+
   getQAService() {
     if (!this.instances.qaService) {
       this.instances.qaService = new QAService(
@@ -167,6 +198,10 @@ class DIContainer {
 
   getConceptController() {
     return ConceptController(this.getConceptService());
+  }
+
+  getShareController() {
+    return ShareController(this.getShareService());
   }
 
   /**

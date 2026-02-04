@@ -1,5 +1,6 @@
-import React from 'react';
-import { Layers, Upload, Loader2, PlusCircle, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Layers, Upload, Loader2, PlusCircle, Search, Share2 } from 'lucide-react';
+import ShareModal from '../modals/ShareModal';
 
 export default function SubjectHeader({
   selectedSubject,
@@ -14,6 +15,7 @@ export default function SubjectHeader({
   onSelectSearchResult,
   isSearching,
 }) {
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   return (
     <div className="z-10 p-6 flex justify-between items-start border-b border-slate-800/50 flex-shrink-0">
       <div>
@@ -73,20 +75,41 @@ export default function SubjectHeader({
             )}
           </div>
 
-          <button
-            onClick={onAddConcept}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95"
-          >
-            <PlusCircle size={20} />
-            Thêm khái niệm
-          </button>
-          <label className="cursor-pointer bg-white text-slate-900 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all transform hover:scale-105 active:scale-95">
-            {loading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}
-            {loading ? 'Đang học...' : 'Nạp tài liệu'}
-            <input type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
-          </label>
+          {!selectedSubject?.isShared ? (
+            <>
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95"
+              >
+                <Share2 size={20} />
+                Chia sẻ
+              </button>
+              <button
+                onClick={onAddConcept}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95"
+              >
+                <PlusCircle size={20} />
+                Thêm khái niệm
+              </button>
+              <label className="cursor-pointer bg-white text-slate-900 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all transform hover:scale-105 active:scale-95">
+                {loading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}
+                {loading ? 'Đang học...' : 'Nạp tài liệu'}
+                <input type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
+              </label>
+            </>
+          ) : (
+            <div className="text-slate-400 text-sm flex items-center gap-2">
+              📌 Chế độ chỉ xem - không thể chỉnh sửa
+            </div>
+          )}
         </div>
       )}
+
+      <ShareModal
+        isOpen={isShareModalOpen}
+        selectedSubject={selectedSubject}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 }

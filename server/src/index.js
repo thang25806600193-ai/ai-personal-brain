@@ -17,6 +17,7 @@ const createUserRoutes = require('./routes/userRoutes');
 const createSubjectRoutes = require('./routes/subjectRoutes');
 const createDocumentRoutes = require('./routes/documentRoutes');
 const createConceptRoutes = require('./routes/conceptRoutes');
+const createShareRoutes = require('./routes/shareRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -38,6 +39,7 @@ app.use('/api/users', createUserRoutes(container));
 app.use('/api/subjects', createSubjectRoutes(container));
 app.use('/api/documents', createDocumentRoutes(container));
 app.use('/api/concepts', createConceptRoutes(container));
+app.use('/api/shares', createShareRoutes(container));
 
 // Health check
 app.get('/', (req, res) => {

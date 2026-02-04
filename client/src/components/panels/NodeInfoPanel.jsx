@@ -8,6 +8,7 @@ export default function NodeInfoPanel({
   onDeleteConcept,
   onUpdateConcept,
   onOpenDocumentList,
+  isSharedView = false,
 }) {
   if (!selectedNode) return null;
 
@@ -87,8 +88,10 @@ export default function NodeInfoPanel({
     }
   };
 
+  const topClass = isSharedView ? 'top-28' : 'top-24';
+
   return (
-    <div className="fixed right-6 top-24 bottom-6 w-[400px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-30 flex flex-col overflow-hidden animate-in slide-in-from-right-10 duration-300">
+    <div className={`fixed right-6 ${topClass} bottom-6 w-[400px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-30 flex flex-col overflow-hidden animate-in slide-in-from-right-10 duration-300`}>
       <div className="bg-slate-800 p-4 flex justify-between items-start border-b border-slate-700">
         <div>
           <h3 className={`${headerColor} font-bold text-lg`}>{selectedNode.name}</h3>
@@ -200,55 +203,62 @@ export default function NodeInfoPanel({
         </div>
       </div>
 
-      <div className="bg-slate-800 p-4 border-t border-slate-700 space-y-2">
-        {!isPersonalNote && (
-          <button
-            onClick={() => onViewInDocument(selectedNode)}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
-          >
-            <FileText size={16} />
-            Xem trong tài liệu
-          </button>
-        )}
+      {!isSharedView && (
+        <div className="bg-slate-800 p-4 border-t border-slate-700 space-y-2">
+          {!isPersonalNote && (
+            <button
+              onClick={() => onViewInDocument(selectedNode)}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+            >
+              <FileText size={16} />
+              Xem trong tài liệu
+            </button>
+          )}
 
-        {onUpdateConcept && (
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-emerald-600/30"
-          >
-            <Edit3 size={16} />
-            {isEditing ? 'Hủy chỉnh sửa' : 'Chỉnh sửa'}
-          </button>
-        )}
+          {onUpdateConcept && (
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-emerald-600/30"
+            >
+              <Edit3 size={16} />
+              {isEditing ? 'Hủy chỉnh sửa' : 'Chỉnh sửa'}
+            </button>
+          )}
 
-        {isEditing && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Đang lưu...
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                Lưu thay đổi
-              </>
-            )}
-          </button>
-        )}
+          {isEditing && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Lưu thay đổi
+                </>
+              )}
+            </button>
+          )}
 
-        <button
-          onClick={() => onDeleteConcept(selectedNode)}
-          className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-red-600/30"
-        >
-          <Trash2 size={16} />
-          Xóa khái niệm
-        </button>
-      </div>
+          <button
+            onClick={() => onDeleteConcept(selectedNode)}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-red-600/30"
+          >
+            <Trash2 size={16} />
+            Xóa khái niệm
+          </button>
+        </div>
+      )}
+      {isSharedView && (
+        <div className="bg-slate-800 p-4 border-t border-slate-700">
+          <p className="text-sm text-slate-400 text-center">📌 Chế độ chỉ xem - không thể chỉnh sửa</p>
+        </div>
+      )}
     </div>
   );
 }

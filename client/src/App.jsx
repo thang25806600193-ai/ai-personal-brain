@@ -4,6 +4,7 @@ import * as d3 from 'd3-force';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import VerifyEmail from './pages/VerifyEmail';
+import SharedView from './pages/SharedView';
 import Sidebar from './components/layout/Sidebar';
 import SubjectHeader from './components/layout/SubjectHeader';
 import GraphView from './components/graph/GraphView';
@@ -511,6 +512,14 @@ function App() {
     }
   };
 
+  // Handle shared view route (no auth required)
+  if (window.location.pathname.startsWith('/share/')) {
+    const token = window.location.pathname.split('/share/')[1];
+    if (token) {
+      return <SharedView token={token} onClose={() => window.history.back()} />;
+    }
+  }
+
   if (window.location.pathname.startsWith('/verify-email')) {
     return <VerifyEmail />;
   }
@@ -532,7 +541,42 @@ function App() {
     return <Dashboard 
       user={user} 
       onLogout={() => { localStorage.clear(); setUser(null); }}
-      onReturnToApp={() => setCurrentView('app')}
+      onReturnToApp={async (sharedSubject) => {
+        if (sharedSubject && sharedSubject.subject && sharedSubject.subject.id) {
+          // Check if user has access to this shared subject
+          try {
+            const accessRes = await api.get(`/subjects/${sharedSubject.subject.id}/access`);
+            if (!accessRes.data.canAccess) {
+              alert('Bạn không có quyền truy cập môn học này');
+              setCurrentView('app');
+              return;
+            }
+            
+            // Set shared subject - mark as shared only if not owner
+            const isOwner = accessRes.data.isOwner;
+            const subjectToLoad = { 
+              ...sharedSubject.subject, 
+              isShared: !isOwner  // Only mark as shared for non-owners
+            };
+            setSelectedSubject(subjectToLoad);
+            setLoading(true);
+            try {
+              const res = await api.get(`/subjects/${sharedSubject.subject.id}/graph`);
+              setGraphData(res.data);
+              if (res.data.documents) {
+                setDocuments(res.data.documents);
+              }
+            } catch (e) { 
+              console.error("Lỗi load shared graph:", e); 
+            }
+            setLoading(false);
+          } catch (e) {
+            console.error("Lỗi check access:", e);
+            alert('Không thể kiểm tra quyền truy cập');
+          }
+        }
+        setCurrentView('app');
+      }}
       onUserUpdate={handleUserUpdate}
     />;
   }
@@ -595,6 +639,7 @@ function App() {
           onDeleteConcept={handleDeleteConcept}
           onUpdateConcept={handleUpdateConcept}
           onOpenDocumentList={() => selectedSubject && loadDocuments(selectedSubject.id)}
+          isSharedView={selectedSubject?.isShared || false}
         />
       )}
 

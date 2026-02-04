@@ -12,6 +12,8 @@ export default function GraphView({
   const containerRef = useRef(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
+  console.log('GraphView render:', { selectedSubject, graphData, size });
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -32,10 +34,11 @@ export default function GraphView({
     <div ref={containerRef} className="flex-1 relative overflow-hidden">
       {selectedSubject ? (
         <ForceGraph2D
+          key={`graph-${graphData?.nodes?.length || 0}-${graphData?.links?.length || 0}`}
           ref={graphRef}
           graphData={graphData}
-          width={size.width}
-          height={size.height}
+          width={size.width || 800}
+          height={size.height || 600}
           nodeLabel={() => ''}
           nodeColor={node => node.color}
           nodeRelSize={8}
