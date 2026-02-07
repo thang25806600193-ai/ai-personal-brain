@@ -112,3 +112,19 @@ model SharedWithUser {
 
   @@unique([subjectId, userId])
 }
+
+model QuizResult {
+  id          String   @id @default(uuid())
+  userId      String
+  subjectId   String
+  score       Int
+  total       Int
+  percentage  Int
+  passed      Boolean
+  timeSpent   Int // seconds
+  wrongAnswers Json // [{questionId, userAnswer, correctAnswer, explanation}, ...]
+  createdAt   DateTime @default(now())
+
+  @@index([userId, subjectId])
+  @@index([createdAt])
+}

@@ -14,6 +14,7 @@ const ConceptRepository = require('../repositories/ConceptRepository');
 const ShareRepository = require('../repositories/ShareRepository');
 const SharedWithUserRepository = require('../repositories/SharedWithUserRepository');
 const SuggestionRepository = require('../repositories/SuggestionRepository');
+const QuizResultRepository = require('../repositories/QuizResultRepository');
 
 // Services
 const AuthService = require('../services/authService');
@@ -27,6 +28,7 @@ const UploadService = require('../services/uploadService');
 const ShareService = require('../services/shareService');
 const AgentService = require('../services/agentService');
 const QuizService = require('../services/quizService');
+const QuizResultService = require('../services/quizResultService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -38,6 +40,7 @@ const ShareController = require('../controllers/shareController');
 const ConceptController = require('../controllers/conceptController');
 const AgentController = require('../controllers/agentController');
 const QuizController = require('../controllers/quizController');
+const QuizResultController = require('../controllers/quizResultController');
 
 class DIContainer {
   constructor() {
@@ -95,6 +98,13 @@ class DIContainer {
       this.instances.suggestionRepository = new SuggestionRepository(this.prisma);
     }
     return this.instances.suggestionRepository;
+  }
+
+  getQuizResultRepository() {
+    if (!this.instances.quizResultRepository) {
+      this.instances.quizResultRepository = new QuizResultRepository();
+    }
+    return this.instances.quizResultRepository;
   }
 
   /**
@@ -212,6 +222,15 @@ class DIContainer {
     return this.instances.quizService;
   }
 
+  getQuizResultService() {
+    if (!this.instances.quizResultService) {
+      this.instances.quizResultService = new QuizResultService(
+        this.getQuizResultRepository()
+      );
+    }
+    return this.instances.quizResultService;
+  }
+
   /**
    * Lấy Controllers
    */
@@ -245,6 +264,10 @@ class DIContainer {
 
   getQuizController() {
     return QuizController(this.getQuizService());
+  }
+
+  getQuizResultController() {
+    return new QuizResultController(this.getQuizResultService());
   }
 
   /**

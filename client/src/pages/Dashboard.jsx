@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BarChart3, BookOpen, BrainCircuit, FileText, Layers, LogOut, User, Camera, X, Lock, UserPlus } from 'lucide-react';
 import { API_URL, toAbsoluteUrl } from '../config/api';
+import QuizHistoryPanel from '../components/panels/QuizHistoryPanel';
 
 export default function Dashboard({ user, onLogout, onReturnToApp, onUserUpdate }) {
   const [subjects, setSubjects] = useState([]);
@@ -180,7 +181,7 @@ export default function Dashboard({ user, onLogout, onReturnToApp, onUserUpdate 
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b] text-white overflow-y-auto">
+    <div className="h-screen bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#1e293b] text-white overflow-y-auto">
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -347,6 +348,11 @@ export default function Dashboard({ user, onLogout, onReturnToApp, onUserUpdate 
               Quay lại ứng dụng
             </button>
           </div>
+        </div>
+
+        {/* Quiz History Section */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm mt-8">
+          <QuizHistoryPanel token={token} />
         </div>
       </main>
 

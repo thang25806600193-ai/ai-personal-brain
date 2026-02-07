@@ -92,6 +92,17 @@ export default function QuizPanel({ subjectId, subjectName, onClose, token }) {
       });
 
       setResult(response.data.result);
+      
+      // Lưu kết quả vào database
+      try {
+        await api.post(`/quiz-result/${subjectId}/result`, {
+          quizResult: response.data.result,
+          timeSpent: timeElapsed
+        });
+      } catch (err) {
+        console.error('Không thể lưu kết quả:', err);
+      }
+      
       setStage('result');
     } catch (err) {
       setError(err.response?.data?.error || 'Không thể chấm điểm');
