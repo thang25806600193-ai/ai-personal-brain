@@ -13,6 +13,7 @@ import PdfPanel from './components/panels/PdfPanel';
 import ChatPanel from './components/panels/ChatPanel';
 import DocumentListPanel from './components/panels/DocumentListPanel';
 import AddConceptPanel from './components/panels/AddConceptPanel';
+import NotificationCenter from './components/panels/NotificationCenter';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -59,6 +60,9 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // --- STATE NOTIFICATION (AI Agent) ---
+  const [reloadGraphTrigger, setReloadGraphTrigger] = useState(0);
   
   const graphRef = useRef();
   const token = localStorage.getItem('token');
@@ -123,6 +127,14 @@ function App() {
           console.error("Lỗi load tài liệu:", e);
           alert("Lỗi tải danh sách tài liệu");
       }
+  };
+
+  // Callback khi AI apply suggestion - reload graph
+  const handleNotificationApply = async () => {
+    if (selectedSubject) {
+      await handleSelectSubject(selectedSubject);
+      setReloadGraphTrigger(prev => prev + 1); // Trigger reload
+    }
   };
 
   const handleCreateSubject = async () => {
@@ -685,6 +697,13 @@ function App() {
           onSearchConcepts={handleSearchConcepts}
         />
       )}
+
+      {/* 8. 🤖 AI AGENT NOTIFICATION CENTER */}
+      <NotificationCenter
+        selectedSubject={selectedSubject}
+        token={token}
+        onNotificationApply={handleNotificationApply}
+      />
 
     </div>
   );

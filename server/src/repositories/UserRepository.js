@@ -1,12 +1,17 @@
 /**
  * User Repository
  * SRP: Chỉ xử lý User-related database operations
+ * LSP: Properly extends BaseRepository with full implementation
  */
 
 const BaseRepository = require('./BaseRepository');
 const ResourceNotFoundException = require('../exceptions/ResourceNotFoundException');
 
 class UserRepository extends BaseRepository {
+  constructor(prismaClient) {
+    super(prismaClient, 'user');
+  }
+
   async findById(id) {
     const user = await this.prisma.user.findUnique({
       where: { id },

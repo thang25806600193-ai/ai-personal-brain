@@ -6,7 +6,20 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// Validate critical environment variables
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'default_secret_change_this_in_production') {
+  console.error('❌ FATAL: JWT_SECRET must be set in environment variables!');
+  console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  process.exit(1);
+}
+
+if (!process.env.GOOGLE_API_KEY && !process.env.GROQ_API_KEY) {
+  console.error('⚠️  WARNING: No AI API keys found. AI features will not work.');
+}
 
 // Import DI Container
 const { getContainer } = require('./config/DIContainer');
@@ -25,16 +38,41 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Security Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false, // Allow frontend to load resources
+}));
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.',
+  skipSuccessfulRequests: true,
+});
+
+app.use(limiter);
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Initialize DI Container
 const container = getContainer();
 
-// Routes
-app.use('/api/auth', createAuthRoutes(container));
+// Routes (with rate limiting for auth)
+app.use('/api/auth', authLimiter, createAuthRoutes(container));
 app.use('/api/users', createUserRoutes(container));
 app.use('/api/subjects', createSubjectRoutes(container));
 app.use('/api/documents', createDocumentRoutes(container));
@@ -83,8 +121,18 @@ app.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n👋 Đang tắt server...');
-  // await container.destroy();
-  process.exit(0);
-});
+const gracefulShutdown = async (signal) => {
+  console.log(`\n👋 Received ${signal}, shutting down gracefully...`);
+  try {
+    const container = getContainer();
+    await container.destroy();
+    console.log('✅ Cleanup completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

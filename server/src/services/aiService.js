@@ -8,20 +8,36 @@ const AIProviderFactory = require('../factories/AIProviderFactory');
 const { HfInference } = require('@huggingface/inference');
 
 class AIService {
-  constructor(primaryProvider = 'gemini', fallbackProvider = 'groq') {
+  constructor(primaryProvider = 'gemini', fallbackProvider = 'groq', timeout = 30000) {
     this.aiProvider = AIProviderFactory.createWithFallback(
       primaryProvider,
       fallbackProvider
     );
     this.hf = new HfInference(process.env.HF_ACCESS_TOKEN);
+    this.timeout = timeout; // AI request timeout in milliseconds
   }
 
   /**
-   * Gọi AI chính (với fallback)
+   * Create a timeout promise
+   */
+  _createTimeoutPromise(ms, operationName = 'AI request') {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${operationName} timed out after ${ms}ms`));
+      }, ms);
+    });
+  }
+
+  /**
+   * Gọi AI chính (với fallback và timeout)
    */
   async ask(prompt) {
     try {
-      return await this.aiProvider.ask(prompt);
+      // Race between AI call and timeout
+      return await Promise.race([
+        this.aiProvider.ask(prompt),
+        this._createTimeoutPromise(this.timeout, 'AI request')
+      ]);
     } catch (error) {
       console.error('❌ AI service error:', error.message);
       throw error;

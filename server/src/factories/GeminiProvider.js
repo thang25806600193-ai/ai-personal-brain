@@ -1,14 +1,18 @@
 /**
  * Gemini AI Provider
  * Implementation của IAIProvider cho Google Gemini
+ * LSP: Can be substituted anywhere IAIProvider is expected
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const IAIProvider = require('./IAIProvider');
+const IAIProvider = require('../interfaces/IAIProvider');
 
 class GeminiProvider extends IAIProvider {
   constructor(apiKey) {
     super();
+    if (!apiKey) {
+      throw new Error('Gemini API key is required');
+    }
     this.apiKey = apiKey;
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -37,6 +41,15 @@ class GeminiProvider extends IAIProvider {
 
   getName() {
     return 'Gemini';
+  }
+
+  getMetadata() {
+    return {
+      model: 'gemini-2.5-flash',
+      maxTokens: 8192,
+      supportsStreaming: true,
+      provider: 'Google',
+    };
   }
 }
 

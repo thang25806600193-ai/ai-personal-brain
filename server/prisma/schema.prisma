@@ -34,6 +34,7 @@ model Subject {
   documents   Document[]
   shares      Share[]
   sharedWith  SharedWithUser[]
+  suggestions Suggestion[]
 }
 
 model Document {
@@ -57,6 +58,7 @@ model Concept {
   document    Document @relation(fields: [documentId], references: [id])
   relatedFrom Relation[] @relation("SourceConcept")
   relatedTo   Relation[] @relation("TargetConcept")
+  suggestions Suggestion[]
 }
 
 model Relation {
@@ -66,6 +68,27 @@ model Relation {
   type      String?
   source    Concept @relation("SourceConcept", fields: [sourceId], references: [id])
   target    Concept @relation("TargetConcept", fields: [targetId], references: [id])
+}
+
+model Suggestion {
+  id           String   @id @default(uuid())
+  subjectId    String
+  conceptId    String
+  term         String
+  type         String
+  severity     String
+  message      String
+  suggestion   String
+  aiSuggestion Json?
+  status       String   @default("pending") // pending | approved | rejected
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  concept      Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, status])
+  @@index([conceptId])
 }
 
 model Share {

@@ -31,10 +31,39 @@ class ConceptRepository extends BaseRepository {
   }
 
   async update(id, data) {
-    return await this.prisma.concept.update({
+    console.log('📝 ConceptRepository.update called:');
+    console.log('   ID:', id);
+    console.log('   Data to update:', data);
+    
+    const result = await this.prisma.concept.update({
       where: { id },
       data,
     });
+    
+    console.log('✅ Update result:', {
+      id: result.id,
+      term: result.term,
+      definition: result.definition ? '(set)' : '(not set)',
+      example: result.example ? '(set)' : '(not set)'
+    });
+    
+    return result;
+  }
+
+  async createRelations(sourceId, targetIds = []) {
+    if (!sourceId || targetIds.length === 0) return 0;
+
+    const data = targetIds.map((targetId) => ({
+      sourceId,
+      targetId,
+    }));
+
+    const result = await this.prisma.relation.createMany({
+      data,
+      skipDuplicates: true,
+    });
+
+    return result.count || 0;
   }
 
   async delete(id) {
@@ -103,6 +132,18 @@ class ConceptRepository extends BaseRepository {
     });
 
     return result.count || 0;
+  }
+
+  async findIdsByTermInSubject(subjectId, term) {
+    const rows = await this.prisma.concept.findMany({
+      where: {
+        term: { equals: term, mode: 'insensitive' },
+        document: { subjectId },
+      },
+      select: { id: true },
+    });
+
+    return rows.map((r) => r.id);
   }
 
   async createRelation(sourceId, targetId, type = 'related') {

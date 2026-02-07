@@ -1,14 +1,18 @@
 /**
  * Groq AI Provider
  * Implementation của IAIProvider cho Groq Llama
+ * LSP: Can be substituted anywhere IAIProvider is expected
  */
 
 const Groq = require('groq-sdk');
-const IAIProvider = require('./IAIProvider');
+const IAIProvider = require('../interfaces/IAIProvider');
 
 class GroqProvider extends IAIProvider {
   constructor(apiKey) {
     super();
+    if (!apiKey) {
+      throw new Error('Groq API key is required');
+    }
     this.apiKey = apiKey;
     this.client = new Groq({ apiKey });
   }
@@ -38,6 +42,15 @@ class GroqProvider extends IAIProvider {
 
   getName() {
     return 'Groq';
+  }
+
+  getMetadata() {
+    return {
+      model: 'llama-3.1-8b-instant',
+      maxTokens: 8000,
+      supportsStreaming: true,
+      provider: 'Groq',
+    };
   }
 }
 

@@ -13,6 +13,7 @@ const DocumentRepository = require('../repositories/DocumentRepository');
 const ConceptRepository = require('../repositories/ConceptRepository');
 const ShareRepository = require('../repositories/ShareRepository');
 const SharedWithUserRepository = require('../repositories/SharedWithUserRepository');
+const SuggestionRepository = require('../repositories/SuggestionRepository');
 
 // Services
 const AuthService = require('../services/authService');
@@ -24,6 +25,7 @@ const QAService = require('../services/qaService');
 const AIService = require('../services/aiService');
 const UploadService = require('../services/uploadService');
 const ShareService = require('../services/shareService');
+const AgentService = require('../services/agentService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -33,6 +35,7 @@ const SubjectController = require('../controllers/subjectController');
 const DocumentController = require('../controllers/documentController');
 const ShareController = require('../controllers/shareController');
 const ConceptController = require('../controllers/conceptController');
+const AgentController = require('../controllers/agentController');
 
 class DIContainer {
   constructor() {
@@ -83,6 +86,13 @@ class DIContainer {
       this.instances.sharedWithUserRepository = new SharedWithUserRepository(this.prisma);
     }
     return this.instances.sharedWithUserRepository;
+  }
+
+  getSuggestionRepository() {
+    if (!this.instances.suggestionRepository) {
+      this.instances.suggestionRepository = new SuggestionRepository(this.prisma);
+    }
+    return this.instances.suggestionRepository;
   }
 
   /**
@@ -177,6 +187,18 @@ class DIContainer {
     return this.instances.uploadService;
   }
 
+  getAgentService() {
+    if (!this.instances.agentService) {
+      this.instances.agentService = new AgentService(
+        this.getSubjectRepository(),
+        this.getConceptRepository(),
+        this.getAIService(),
+        this.getSuggestionRepository()
+      );
+    }
+    return this.instances.agentService;
+  }
+
   /**
    * Lấy Controllers
    */
@@ -204,12 +226,17 @@ class DIContainer {
     return ShareController(this.getShareService());
   }
 
+  getAgentController() {
+    return new AgentController(this.getAgentService());
+  }
+
   /**
    * Clean up
    */
   async destroy() {
-    // Close database connection
-    // await this.prisma.$disconnect();
+    console.log('🧹 Cleaning up DI Container...');
+    const { closePrismaClient } = require('../config/database');
+    await closePrismaClient();
   }
 }
 
