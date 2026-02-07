@@ -4,6 +4,8 @@ import { BarChart3, BookOpen, BrainCircuit, FileText, Layers, LogOut, User, Came
 import { API_URL, toAbsoluteUrl } from '../config/api';
 import QuizHistoryPanel from '../components/panels/QuizHistoryPanel';
 import KnowledgeGapPanel from '../components/panels/KnowledgeGapPanel';
+import RoadmapPanel from '../components/panels/RoadmapPanel';
+import CopilotPanel from '../components/panels/CopilotPanel';
 
 export default function Dashboard({ user, onLogout, onReturnToApp, onUserUpdate }) {
   const [subjects, setSubjects] = useState([]);
@@ -263,6 +265,12 @@ export default function Dashboard({ user, onLogout, onReturnToApp, onUserUpdate 
 
         <div className="mb-8">
           <KnowledgeGapPanel subjects={subjects} token={token} />
+        </div>
+
+        {/* Learning Roadmap and AI Copilot - New Features */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <RoadmapPanel selectedSubject={subjects[0]} token={token} />
+          <CopilotPanel selectedSubject={subjects[0]} token={token} />
         </div>
 
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm mb-8">

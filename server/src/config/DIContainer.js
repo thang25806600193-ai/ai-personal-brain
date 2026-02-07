@@ -30,6 +30,8 @@ const AgentService = require('../services/agentService');
 const QuizService = require('../services/quizService');
 const QuizResultService = require('../services/quizResultService');
 const KnowledgeGapService = require('../services/knowledgeGapService');
+const RoadmapService = require('../services/roadmapService');
+const CopilotService = require('../services/copilotService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -43,6 +45,7 @@ const AgentController = require('../controllers/agentController');
 const QuizController = require('../controllers/quizController');
 const QuizResultController = require('../controllers/quizResultController');
 const KnowledgeGapController = require('../controllers/knowledgeGapController');
+const RoadmapController = require('../controllers/roadmapController');
 
 class DIContainer {
   constructor() {
@@ -243,6 +246,30 @@ class DIContainer {
     return this.instances.knowledgeGapService;
   }
 
+  getRoadmapService() {
+    if (!this.instances.roadmapService) {
+      this.instances.roadmapService = new RoadmapService({
+        conceptRepository: this.getConceptRepository(),
+        quizResultRepository: this.getQuizResultRepository(),
+        knowledgeGapService: this.getKnowledgeGapService()
+      });
+    }
+    return this.instances.roadmapService;
+  }
+
+  getCopilotService() {
+    if (!this.instances.copilotService) {
+      this.instances.copilotService = new CopilotService({
+        conceptRepository: this.getConceptRepository(),
+        quizResultRepository: this.getQuizResultRepository(),
+        documentRepository: this.getDocumentRepository(),
+        knowledgeGapService: this.getKnowledgeGapService(),
+        roadmapService: this.getRoadmapService()
+      });
+    }
+    return this.instances.copilotService;
+  }
+
   /**
    * Lấy Controllers
    */
@@ -284,6 +311,13 @@ class DIContainer {
 
   getKnowledgeGapController() {
     return new KnowledgeGapController(this.getKnowledgeGapService());
+  }
+
+  getRoadmapController() {
+    return new RoadmapController({
+      roadmapService: this.getRoadmapService(),
+      copilotService: this.getCopilotService()
+    });
   }
 
   /**

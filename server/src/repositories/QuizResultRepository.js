@@ -9,7 +9,7 @@ class QuizResultRepository {
     return this.prisma.quizResult.create({
       data: {
         userId,
-        subjectId,
+        subjectId: String(subjectId),
         score: resultData.score,
         total: resultData.total,
         percentage: resultData.percentage,
@@ -24,7 +24,7 @@ class QuizResultRepository {
     return this.prisma.quizResult.findMany({
       where: {
         userId,
-        subjectId
+        subjectId: String(subjectId)
       },
       orderBy: {
         createdAt: 'desc'
@@ -37,7 +37,7 @@ class QuizResultRepository {
     return this.prisma.quizResult.findMany({
       where: {
         userId,
-        subjectId
+        subjectId: String(subjectId)
       },
       orderBy: {
         createdAt: 'desc'
@@ -50,7 +50,7 @@ class QuizResultRepository {
     const results = await this.prisma.quizResult.findMany({
       where: {
         userId,
-        subjectId
+        subjectId: String(subjectId)
       }
     });
 

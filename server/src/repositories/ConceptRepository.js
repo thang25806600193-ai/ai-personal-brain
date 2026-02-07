@@ -173,7 +173,7 @@ class ConceptRepository extends BaseRepository {
   async findBySubjectId(subjectId) {
     return await this.prisma.concept.findMany({
       where: {
-        document: { subjectId },
+        document: { subjectId: String(subjectId) },
       },
       include: {
         document: { select: { title: true } },

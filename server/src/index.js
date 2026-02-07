@@ -34,6 +34,7 @@ const createShareRoutes = require('./routes/shareRoutes');
 const createQuizRoutes = require('./routes/quizRoutes');
 const createQuizResultRoutes = require('./routes/quizResultRoutes');
 const createKnowledgeGapRoutes = require('./routes/knowledgeGapRoutes');
+const createRoadmapRoutes = require('./routes/roadmapRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -84,6 +85,7 @@ app.use('/api/shares', createShareRoutes(container));
 app.use('/api/quiz', createQuizRoutes(container));
 app.use('/api/quiz-result', createQuizResultRoutes(container));
 app.use('/api/knowledge-gap', createKnowledgeGapRoutes(container));
+app.use('/api/roadmap', createRoadmapRoutes(container));
 
 // Health check
 app.get('/', (req, res) => {
