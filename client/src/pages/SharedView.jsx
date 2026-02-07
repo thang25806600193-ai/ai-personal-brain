@@ -3,6 +3,7 @@ import * as d3 from 'd3-force';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import GraphView from '../components/graph/GraphView';
 import NodeInfoPanel from '../components/panels/NodeInfoPanel';
+import { API_URL } from '../config/api';
 
 export default function SharedView({ token, onClose }) {
   const [shareInfo, setShareInfo] = useState(null);
@@ -31,7 +32,7 @@ export default function SharedView({ token, onClose }) {
 
     try {
       // Get share info
-      const infoRes = await fetch(`http://localhost:5000/api/shares/${token}`);
+      const infoRes = await fetch(`${API_URL}/shares/${token}`);
       if (!infoRes.ok) {
         throw new Error('Link chia sẻ không hợp lệ hoặc đã hết hạn');
       }
@@ -41,7 +42,7 @@ export default function SharedView({ token, onClose }) {
       console.log('Subject from info:', info.subject);
 
       // Get graph data
-      const graphRes = await fetch(`http://localhost:5000/api/shares/${token}/graph`);
+      const graphRes = await fetch(`${API_URL}/shares/${token}/graph`);
       if (!graphRes.ok) {
         throw new Error('Không thể tải dữ liệu chia sẻ');
       }

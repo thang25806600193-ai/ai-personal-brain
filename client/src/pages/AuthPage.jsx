@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import { GoogleLogin } from '@react-oauth/google';
 import { BrainCircuit, Lock, Mail, User, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import azdigi from '../assets/azdigi.png';
@@ -33,7 +34,7 @@ const AuthPage = ({ onLoginSuccess }) => {
 
     try {
       const endpoint = isLogin ? '/login' : '/register';
-      const res = await axios.post(`http://localhost:5000/api/auth${endpoint}`, formData);
+      const res = await axios.post(`${API_URL}/auth${endpoint}`, formData);
 
       if (isLogin) {
         localStorage.setItem('token', res.data.token);
@@ -56,7 +57,7 @@ const AuthPage = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/google', {
+      const res = await axios.post(`${API_URL}/auth/google`, {
         credential: credentialResponse?.credential,
       });
 

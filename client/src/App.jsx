@@ -14,6 +14,8 @@ import ChatPanel from './components/panels/ChatPanel';
 import DocumentListPanel from './components/panels/DocumentListPanel';
 import AddConceptPanel from './components/panels/AddConceptPanel';
 import NotificationCenter from './components/panels/NotificationCenter';
+import QuizPanel from './components/panels/QuizPanel';
+import { API_URL, toAbsoluteUrl, uploadsUrl } from './config/api';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -46,6 +48,7 @@ function App() {
   const [isDocumentListOpen, setIsDocumentListOpen] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' hoặc 'app'
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   
   // --- STATE CHAT AI ---
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -69,7 +72,7 @@ function App() {
 
   // Cấu hình Axios để luôn gửi Token
   const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_URL,
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -379,7 +382,7 @@ function App() {
     }
 
     // Tạo URL từ filePath
-    const fileUrl = `http://localhost:5000/uploads/${doc.filePath.split('\\').pop()}`;
+    const fileUrl = uploadsUrl(doc.filePath.split('\\').pop());
     
     setPdfFile(fileUrl);
     setCurrentPage(node.page || 1);
@@ -543,10 +546,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const getAvatarSrc = (avatarUrl) => {
-    if (!avatarUrl) return null;
-    return avatarUrl.startsWith('http') ? avatarUrl : `http://localhost:5000${avatarUrl}`;
-  };
+  const getAvatarSrc = (avatarUrl) => toAbsoluteUrl(avatarUrl);
 
   // Nếu đang ở dashboard, hiển thị dashboard
   if (currentView === 'dashboard') {
@@ -586,6 +586,19 @@ function App() {
             console.error("Lỗi check access:", e);
             alert('Không thể kiểm tra quyền truy cập');
           }
+        } else if (sharedSubject && sharedSubject.id) {
+          setSelectedSubject(sharedSubject);
+          setLoading(true);
+          try {
+            const res = await api.get(`/subjects/${sharedSubject.id}/graph`);
+            setGraphData(res.data);
+            if (res.data.documents) {
+              setDocuments(res.data.documents);
+            }
+          } catch (e) {
+            console.error("Lỗi load graph:", e);
+          }
+          setLoading(false);
         }
         setCurrentView('app');
       }}
@@ -623,6 +636,7 @@ function App() {
           onLoadDocuments={loadDocuments}
           onFileUpload={handleFileUpload}
           onAddConcept={() => setIsAddConceptOpen(true)}
+          onStartQuiz={() => setIsQuizOpen(true)}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
           searchResults={searchResults}
@@ -637,6 +651,15 @@ function App() {
           selectedNode={selectedNode}
           onNodeClick={handleNodeClick}
         />
+
+        {isQuizOpen && selectedSubject && (
+          <QuizPanel
+            subjectId={selectedSubject.id}
+            subjectName={selectedSubject.name}
+            token={token}
+            onClose={() => setIsQuizOpen(false)}
+          />
+        )}
       </div>
 
       {/* 3. NODE INFO PANEL (Bên phải - Thông tin chi tiết) */}

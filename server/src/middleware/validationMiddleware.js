@@ -137,6 +137,60 @@ const validateQuestion = [
   handleValidationErrors,
 ];
 
+/**
+ * Quiz validation rules
+ */
+const validateQuizGenerate = [
+  body('count')
+    .optional()
+    .isInt({ min: 5, max: 50 })
+    .withMessage('Số lượng câu hỏi phải từ 5-50'),
+  body('difficulty')
+    .optional()
+    .isIn(['easy', 'medium', 'hard'])
+    .withMessage('Độ khó phải là: easy, medium hoặc hard'),
+  handleValidationErrors,
+];
+
+const validateQuizSubmit = [
+  body('answers')
+    .isArray({ min: 1 })
+    .withMessage('Answers phải là mảng không rỗng'),
+  body('answers.*.questionId')
+    .trim()
+    .notEmpty()
+    .withMessage('Mỗi answer phải có questionId'),
+  body('answers.*.answer')
+    .trim()
+    .notEmpty()
+    .withMessage('Mỗi answer phải có câu trả lời'),
+  body('answersToken')
+    .trim()
+    .notEmpty()
+    .withMessage('answersToken là bắt buộc'),
+  handleValidationErrors,
+];
+
+const validateExplainAnswer = [
+  body('conceptId')
+    .trim()
+    .isUUID()
+    .withMessage('conceptId không hợp lệ'),
+  body('question')
+    .trim()
+    .notEmpty()
+    .withMessage('question là bắt buộc'),
+  body('userAnswer')
+    .trim()
+    .notEmpty()
+    .withMessage('userAnswer là bắt buộc'),
+  body('correctAnswer')
+    .trim()
+    .notEmpty()
+    .withMessage('correctAnswer là bắt buộc'),
+  handleValidationErrors,
+];
+
 module.exports = {
   validateRegister,
   validateLogin,
@@ -146,5 +200,8 @@ module.exports = {
   validateSubjectId,
   validateCreateConcept,
   validateQuestion,
+  validateQuizGenerate,
+  validateQuizSubmit,
+  validateExplainAnswer,
   handleValidationErrors,
 };

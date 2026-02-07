@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../config/api';
 import { Copy, CheckCircle, Loader2, X, Globe, Lock, Mail, Trash2, Users } from 'lucide-react';
 
 export default function ShareModal({ isOpen, selectedSubject, onClose }) {
@@ -38,7 +39,7 @@ export default function ShareModal({ isOpen, selectedSubject, onClose }) {
 
   const loadExistingShare = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/subjects/${selectedSubject.id}/share`, {
+      const response = await fetch(`${API_URL}/subjects/${selectedSubject.id}/share`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -63,7 +64,7 @@ export default function ShareModal({ isOpen, selectedSubject, onClose }) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/shares/create', {
+      const response = await fetch(`${API_URL}/shares/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ export default function ShareModal({ isOpen, selectedSubject, onClose }) {
 
   const loadSharedUsers = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/shares/${selectedSubject.id}/users`, {
+      const response = await fetch(`${API_URL}/shares/${selectedSubject.id}/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -126,7 +127,7 @@ export default function ShareModal({ isOpen, selectedSubject, onClose }) {
     setEmailSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/shares/email', {
+      const response = await fetch(`${API_URL}/shares/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +159,7 @@ export default function ShareModal({ isOpen, selectedSubject, onClose }) {
     if (!confirm('Xóa quyền truy cập của người này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/shares/${selectedSubject.id}/users/${userId}`, {
+      const response = await fetch(`${API_URL}/shares/${selectedSubject.id}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,

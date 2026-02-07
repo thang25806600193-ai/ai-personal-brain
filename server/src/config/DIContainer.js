@@ -26,6 +26,7 @@ const AIService = require('../services/aiService');
 const UploadService = require('../services/uploadService');
 const ShareService = require('../services/shareService');
 const AgentService = require('../services/agentService');
+const QuizService = require('../services/quizService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -36,6 +37,7 @@ const DocumentController = require('../controllers/documentController');
 const ShareController = require('../controllers/shareController');
 const ConceptController = require('../controllers/conceptController');
 const AgentController = require('../controllers/agentController');
+const QuizController = require('../controllers/quizController');
 
 class DIContainer {
   constructor() {
@@ -199,6 +201,17 @@ class DIContainer {
     return this.instances.agentService;
   }
 
+  getQuizService() {
+    if (!this.instances.quizService) {
+      this.instances.quizService = new QuizService(
+        this.getSubjectRepository(),
+        this.getConceptRepository(),
+        this.getAIService()
+      );
+    }
+    return this.instances.quizService;
+  }
+
   /**
    * Lấy Controllers
    */
@@ -228,6 +241,10 @@ class DIContainer {
 
   getAgentController() {
     return new AgentController(this.getAgentService());
+  }
+
+  getQuizController() {
+    return QuizController(this.getQuizService());
   }
 
   /**

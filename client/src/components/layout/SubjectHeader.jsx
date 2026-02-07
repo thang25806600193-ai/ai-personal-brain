@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Upload, Loader2, PlusCircle, Search, Share2 } from 'lucide-react';
+import { Layers, Upload, Loader2, PlusCircle, Search, Share2, Brain } from 'lucide-react';
 import ShareModal from '../modals/ShareModal';
 
 export default function SubjectHeader({
@@ -9,6 +9,7 @@ export default function SubjectHeader({
   onLoadDocuments,
   onFileUpload,
   onAddConcept,
+  onStartQuiz,
   searchQuery,
   onSearchQueryChange,
   searchResults,
@@ -77,6 +78,13 @@ export default function SubjectHeader({
 
           {!selectedSubject?.isShared ? (
             <>
+              <button
+                onClick={onStartQuiz}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95"
+              >
+                <Brain size={20} />
+                Ôn tập
+              </button>
               <button
                 onClick={() => setIsShareModalOpen(true)}
                 className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95"

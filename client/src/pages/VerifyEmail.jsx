@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import { CheckCircle, XCircle, Mail, RefreshCw } from 'lucide-react';
 
 export default function VerifyEmail() {
@@ -25,7 +26,7 @@ export default function VerifyEmail() {
 
     const verify = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/auth/verify-email?token=${token}`);
+        const res = await axios.get(`${API_URL}/auth/verify-email?token=${token}`);
         setStatus('success');
         setMessage(res.data.message || 'Xác thực email thành công!');
       } catch (error) {
@@ -48,7 +49,7 @@ export default function VerifyEmail() {
     try {
       setResendLoading(true);
       setResendMessage('');
-      const res = await axios.post('http://localhost:5000/api/auth/resend-verify', { email });
+      const res = await axios.post(`${API_URL}/auth/resend-verify`, { email });
       setResendMessage(res.data.message || 'Đã gửi lại email xác thực.');
     } catch (error) {
       setResendMessage(error?.response?.data?.error || 'Không thể gửi lại email.');
