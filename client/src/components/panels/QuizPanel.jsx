@@ -31,6 +31,7 @@ export default function QuizPanel({ subjectId, subjectName, onClose, token }) {
   const [showExplanation, setShowExplanation] = useState({});
   const [explanationLoading, setExplanationLoading] = useState({});
   const [aiExplanations, setAiExplanations] = useState({});
+  const [batchExplanationLoading, setBatchExplanationLoading] = useState(false);
 
   const api = axios.create({
     baseURL: API_URL,
@@ -132,6 +133,54 @@ export default function QuizPanel({ subjectId, subjectName, onClose, token }) {
       setError('Không thể tạo giải thích');
     } finally {
       setExplanationLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleBatchExplain = async () => {
+    if (!result || result.wrongAnswers.length === 0) return;
+
+    try {
+      setBatchExplanationLoading(true);
+      setError('');
+
+      // Prepare wrong answers with full question info
+      const enrichedWrongAnswers = result.wrongAnswers.map(wrong => {
+        const question = quiz.questions.find(q => q.id === wrong.questionId);
+        return {
+          questionId: wrong.questionId,
+          question: question?.question || '',
+          options: question?.options || [],
+          correctAnswer: wrong.correctAnswer,
+          userAnswer: wrong.userAnswer,
+          conceptId: wrong.conceptId
+        };
+      });
+
+      // Call batch explanation API
+      const response = await api.post(`/review/${subjectId}/explanations`, {
+        wrongAnswers: enrichedWrongAnswers
+      });
+
+      // Update explanations for all questions
+      const newExplanations = {};
+      const newShowFlags = {};
+      
+      response.data.data.explanations.forEach(exp => {
+        newExplanations[exp.questionId] = exp.explanation;
+        newShowFlags[exp.questionId] = true;
+      });
+
+      setAiExplanations(newExplanations);
+      setShowExplanation(newShowFlags);
+
+      // Optional: Show cost savings info
+      if (response.data.data.costOptimization) {
+        console.log('💰 Cost Optimization:', response.data.data.costOptimization);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Không thể tạo giải thích hàng loạt');
+    } finally {
+      setBatchExplanationLoading(false);
     }
   };
 
@@ -399,10 +448,34 @@ export default function QuizPanel({ subjectId, subjectName, onClose, token }) {
           <div className="p-6 overflow-y-auto max-h-[calc(88vh-280px)] custom-scrollbar">
             {result.wrongAnswers.length > 0 ? (
               <div className="space-y-4">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <XCircle className="text-red-400" size={24} />
-                  Câu trả lời sai ({result.wrongAnswers.length})
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <XCircle className="text-red-400" size={24} />
+                    Câu trả lời sai ({result.wrongAnswers.length})
+                  </h3>
+                  <button
+                    onClick={handleBatchExplain}
+                    disabled={batchExplanationLoading || Object.keys(aiExplanations).length === result.wrongAnswers.length}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-pink-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {batchExplanationLoading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        Đang tạo giải thích...
+                      </>
+                    ) : Object.keys(aiExplanations).length === result.wrongAnswers.length ? (
+                      <>
+                        <CheckCircle2 size={16} />
+                        Đã giải thích tất cả
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        Giải thích tất cả (1 AI call)
+                      </>
+                    )}
+                  </button>
+                </div>
                 {result.wrongAnswers.map((wrong) => {
                   const question = quiz.questions.find(q => q.id === wrong.questionId);
                   const showingExplanation = showExplanation[wrong.questionId];

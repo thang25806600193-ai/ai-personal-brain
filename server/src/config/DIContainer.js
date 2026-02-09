@@ -32,6 +32,8 @@ const QuizResultService = require('../services/quizResultService');
 const KnowledgeGapService = require('../services/knowledgeGapService');
 const RoadmapService = require('../services/roadmapService');
 const CopilotService = require('../services/copilotService');
+const PersonalizedQuizService = require('../services/personalizedQuizService');
+const BatchExplanationService = require('../services/batchExplanationService');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Controllers
@@ -46,6 +48,7 @@ const QuizController = require('../controllers/quizController');
 const QuizResultController = require('../controllers/quizResultController');
 const KnowledgeGapController = require('../controllers/knowledgeGapController');
 const RoadmapController = require('../controllers/roadmapController');
+const PersonalReviewController = require('../controllers/personalReviewController');
 
 class DIContainer {
   constructor() {
@@ -270,6 +273,28 @@ class DIContainer {
     return this.instances.copilotService;
   }
 
+  getPersonalizedQuizService() {
+    if (!this.instances.personalizedQuizService) {
+      this.instances.personalizedQuizService = new PersonalizedQuizService({
+        knowledgeGapService: this.getKnowledgeGapService(),
+        conceptRepository: this.getConceptRepository(),
+        quizResultRepository: this.getQuizResultRepository(),
+        quizService: this.getQuizService()
+      });
+    }
+    return this.instances.personalizedQuizService;
+  }
+
+  getBatchExplanationService() {
+    if (!this.instances.batchExplanationService) {
+      this.instances.batchExplanationService = new BatchExplanationService({
+        aiService: this.getAIService(),
+        conceptRepository: this.getConceptRepository()
+      });
+    }
+    return this.instances.batchExplanationService;
+  }
+
   /**
    * Lấy Controllers
    */
@@ -317,6 +342,13 @@ class DIContainer {
     return new RoadmapController({
       roadmapService: this.getRoadmapService(),
       copilotService: this.getCopilotService()
+    });
+  }
+
+  getPersonalReviewController() {
+    return new PersonalReviewController({
+      personalizedQuizService: this.getPersonalizedQuizService(),
+      batchExplanationService: this.getBatchExplanationService()
     });
   }
 
