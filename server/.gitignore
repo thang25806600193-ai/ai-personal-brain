@@ -1,5 +1,13 @@
 node_modules
 # Keep environment variables out of version control
 .env
-/uploads
+.env.local
+.env.*.local
+/uploads/*
+!uploads/.gitkeep
+/logs/*
+!logs/.gitkeep
 /src/generated/prisma
+*.log
+npm-debug.log*
+

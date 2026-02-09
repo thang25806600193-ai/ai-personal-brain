@@ -8,17 +8,18 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const logger = require('./utils/logger');
 require('dotenv').config();
 
 // Validate critical environment variables
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'default_secret_change_this_in_production') {
-  console.error('❌ FATAL: JWT_SECRET must be set in environment variables!');
-  console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  logger.error('❌ FATAL: JWT_SECRET must be set in environment variables!');
+  logger.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
   process.exit(1);
 }
 
 if (!process.env.GOOGLE_API_KEY && !process.env.GROQ_API_KEY) {
-  console.error('⚠️  WARNING: No AI API keys found. AI features will not work.');
+  logger.warn('⚠️  WARNING: No AI API keys found. AI features will not work.');
 }
 
 // Import DI Container
@@ -104,6 +105,27 @@ app.get('/', (req, res) => {
   res.send('🚀 AI Personal Brain Server is running!');
 });
 
+// Health check with database
+app.get('/health', async (req, res) => {
+  try {
+    const prisma = container.getPrismaClient();
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    logger.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'error',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Test API (deprecated - for backwards compatibility)
 app.post('/api/test-ai', async (req, res, next) => {
   try {
@@ -136,20 +158,22 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`\n🔥 Server đang chạy tại: http://localhost:${PORT}`);
-  console.log(`📝 Môi trường: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`🔥 Server đang chạy tại: http://localhost:${PORT}`);
+  logger.info(`📝 Môi trường: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`🔒 Security: Helmet + Rate Limiting enabled`);
+  logger.info(`🗄️  Database: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`);
 });
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
-  console.log(`\n👋 Received ${signal}, shutting down gracefully...`);
+  logger.info(`👋 Received ${signal}, shutting down gracefully...`);
   try {
     const container = getContainer();
     await container.destroy();
-    console.log('✅ Cleanup completed');
+    logger.info('✅ Cleanup completed');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    logger.error('❌ Error during shutdown:', error);
     process.exit(1);
   }
 };

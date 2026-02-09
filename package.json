@@ -10,8 +10,16 @@
   "scripts": {
     "server": "cd server && npm start",
     "client": "cd client && npm run dev",
+    "server:prod": "cd server && npm run start:prod",
+    "client:build": "cd client && npm run build",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "setup": "cd server && cp .env.example .env && npx prisma migrate dev"
+    "setup": "cd server && cp .env.example .env && npx prisma migrate dev",
+    "setup:prod": "cp .env.production.example .env && cd server && npx prisma generate && npx prisma migrate deploy",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart"
   },
   "dependencies": {
     "pdf-parse": "^2.4.5"
