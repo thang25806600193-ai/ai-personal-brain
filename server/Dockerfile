@@ -1,5 +1,5 @@
 # Multi-stage build for production optimization
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -7,6 +7,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
+
+# Install OpenSSL for Prisma
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
@@ -20,13 +25,15 @@ COPY . .
 # ================================
 # Production stage
 # ================================
-FROM node:18-alpine
+FROM node:18-bullseye-slim
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and OpenSSL for Prisma
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends dumb-init openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && useradd -r -u 1001 -g nodejs nodejs
 
 # Set working directory
 WORKDIR /app

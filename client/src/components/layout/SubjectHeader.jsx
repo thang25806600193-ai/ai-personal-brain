@@ -6,6 +6,9 @@ export default function SubjectHeader({
   selectedSubject,
   graphData,
   loading,
+  uploadProgress,
+  uploadEtaSeconds,
+  uploadStatus,
   onLoadDocuments,
   onFileUpload,
   onAddConcept,
@@ -99,11 +102,34 @@ export default function SubjectHeader({
                 <PlusCircle size={20} />
                 Thêm khái niệm
               </button>
-              <label className="cursor-pointer bg-white text-slate-900 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all transform hover:scale-105 active:scale-95">
-                {loading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}
-                {loading ? 'Đang học...' : 'Nạp tài liệu'}
-                <input type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
-              </label>
+              <div className="flex flex-col items-stretch gap-2">
+                <label className="cursor-pointer bg-white text-slate-900 hover:bg-blue-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all transform hover:scale-105 active:scale-95">
+                  {loading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}
+                  {loading ? 'Đang học...' : 'Nạp tài liệu'}
+                  <input type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
+                </label>
+                {uploadStatus !== 'idle' && (
+                  <div className="w-full">
+                    <div className="flex items-center justify-between text-[11px] text-slate-300 mb-1">
+                      <span>
+                        {uploadStatus === 'uploading' && `Đang tải ${uploadProgress}%`}
+                        {uploadStatus === 'processing' && 'Đang xử lý...'}
+                        {uploadStatus === 'done' && 'Hoàn tất'}
+                        {uploadStatus === 'error' && 'Lỗi upload'}
+                      </span>
+                      {(uploadStatus === 'uploading' || uploadStatus === 'processing') && uploadEtaSeconds !== null && (
+                        <span>~{uploadEtaSeconds}s</span>
+                      )}
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <div className="text-slate-400 text-sm flex items-center gap-2">

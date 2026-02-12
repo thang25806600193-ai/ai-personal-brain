@@ -48,7 +48,7 @@ class DocumentService {
       });
 
       // Trích xuất concepts bằng AI (Gemini/Groq)
-      const concepts = await this._extractConceptsViaAI(fullText);
+      const concepts = await this._extractConceptsViaAI(pages, fullText);
 
       // Lưu concepts vào DB với deduplication
       await this._saveConcepts(concepts, newDoc.id, subjectId);
@@ -220,33 +220,166 @@ class DocumentService {
   /**
    * Private method: Gọi AI để trích xuất concepts
    */
-  async _extractConceptsViaAI(text) {
-    const prompt = `
-      Dựa vào tài liệu học tập sau, hãy trích xuất 5-7 khái niệm quan trọng nhất.
-      
-      Với mỗi khái niệm:
-      - term: Tên khái niệm
-      - definition: Định nghĩa rõ ràng
-      - example: Ví dụ minh họa từ tài liệu (nếu có). 
-        + QUAN TRỌNG: CHỈ lấy ví dụ có thật trong tài liệu, KHÔNG tự bịa.
-        + Nếu ví dụ là CODE thì bảo toàn format, xuống dòng, indent nguyên gốc
-        + Nếu không có ví dụ thì để null
-      - page: Số trang (mặc định 1)
+  _splitPageIntoSentences(pageText) {
+    return pageText
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
+  _chunkSentences(pages, options = {}) {
+    const targetWords = options.targetWords ?? 1500;
+    const overlapRatio = options.overlapRatio ?? 0.15;
+    const overlapWords = Math.max(1, Math.floor(targetWords * overlapRatio));
+
+    const sentences = [];
+    pages.forEach((pageText, index) => {
+      const pageNumber = index + 1;
+      const pageSentences = this._splitPageIntoSentences(pageText);
+      pageSentences.forEach((text) => {
+        sentences.push({ text, page: pageNumber });
+      });
+    });
+
+    const chunks = [];
+    let current = [];
+    let currentWords = 0;
+
+    const countWords = (text) => text.split(/\s+/).filter(Boolean).length;
+
+    const finalizeChunk = () => {
+      if (current.length === 0) return;
+      const pagesInChunk = current.map((s) => s.page);
+      const startPage = Math.min(...pagesInChunk);
+      const endPage = Math.max(...pagesInChunk);
+      chunks.push({
+        text: current.map((s) => s.text).join(' '),
+        startPage,
+        endPage,
+      });
+    };
+
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i];
+      const words = countWords(sentence.text);
+
+      if (currentWords + words > targetWords && current.length > 0) {
+        finalizeChunk();
+
+        let overlapCount = 0;
+        const overlapSentences = [];
+        for (let j = current.length - 1; j >= 0; j--) {
+          overlapSentences.unshift(current[j]);
+          overlapCount += countWords(current[j].text);
+          if (overlapCount >= overlapWords) break;
+        }
+
+        current = overlapSentences;
+        currentWords = overlapCount;
+      }
+
+      current.push(sentence);
+      currentWords += words;
+    }
+
+    finalizeChunk();
+
+    return chunks;
+  }
+
+  _safeParseJsonArray(aiResponse) {
+    try {
+      const cleanJson = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('⚠️ Lỗi parse JSON từ AI:', error);
+      return [];
+    }
+  }
+
+  _dedupeConcepts(concepts) {
+    const map = new Map();
+    concepts.forEach((concept) => {
+      if (!concept || !concept.term) return;
+      const key = this.aiService.normalizeText(concept.term);
+      if (!map.has(key)) {
+        map.set(key, concept);
+      }
+    });
+    return Array.from(map.values());
+  }
+
+  _formatConceptsForAI(concepts) {
+    return concepts
+      .map((c) => {
+        const term = c.term || '';
+        const definition = c.definition || '';
+        const example = c.example ?? null;
+        const page = c.page || 1;
+        return { term, definition, example, page };
+      })
+      .filter((c) => c.term && c.definition);
+  }
+
+  async _extractConceptsViaAI(pages, textFallback) {
+    const chunks = this._chunkSentences(pages.length > 0 ? pages : [textFallback]);
+    const allConcepts = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const prompt = `
+        Nhiệm vụ: Liệt kê TẤT CẢ khái niệm mới xuất hiện trong đoạn sau.
+        
+        Mỗi khái niệm gồm:
+        - term: Tên khái niệm
+        - definition: Định nghĩa rõ ràng
+        - example: Ví dụ minh họa từ đoạn (nếu có).
+          + QUAN TRỌNG: CHỈ lấy ví dụ có thật trong đoạn, KHÔNG tự bịa.
+          + Nếu ví dụ là CODE thì bảo toàn format, xuống dòng, indent nguyên gốc
+          + Nếu không có ví dụ thì để null
+        - page: Số trang (chọn 1 trang phù hợp trong khoảng ${chunk.startPage}-${chunk.endPage})
+        
+        Trả về JSON CHUẨN dạng: [{"term": "...", "definition": "...", "example": "..." hoặc null, "page": 1}]
+        Tuyệt đối chỉ trả về JSON, không thêm lời dẫn.
+        
+        Đoạn ${i + 1}/${chunks.length} (trang ${chunk.startPage}-${chunk.endPage}):
+        """${chunk.text}"""
+      `;
+
+      try {
+        const aiResponse = await this.aiService.ask(prompt);
+        const parsed = this._safeParseJsonArray(aiResponse);
+        allConcepts.push(...parsed);
+      } catch (error) {
+        console.error(`⚠️ Lỗi AI ở chunk ${i + 1}:`, error);
+      }
+    }
+
+    const deduped = this._dedupeConcepts(allConcepts);
+    const formatted = this._formatConceptsForAI(deduped);
+
+    if (formatted.length === 0) return [];
+
+    const reducePrompt = `
+      Bạn đang có danh sách khái niệm thô từ nhiều đoạn.
+      Hãy lọc trùng, chỉnh sửa lại cho rõ ràng, và sắp xếp theo nhóm chủ đề (vẫn trả về mảng phẳng).
       
       Trả về JSON CHUẨN dạng: [{"term": "...", "definition": "...", "example": "..." hoặc null, "page": 1}]
       Tuyệt đối chỉ trả về JSON, không thêm lời dẫn.
       
-      Văn bản: "${text.substring(0, 4000)}..."
+      Danh sách đầu vào: ${JSON.stringify(formatted)}
     `;
 
-    const aiResponse = await this.aiService.ask(prompt);
-
     try {
-      const cleanJson = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanJson);
+      const reduceResponse = await this.aiService.ask(reducePrompt);
+      const reduced = this._safeParseJsonArray(reduceResponse);
+      return reduced.length > 0 ? reduced : formatted;
     } catch (error) {
-      console.error('⚠️ Lỗi parse JSON từ AI:', error);
-      return [];
+      console.error('⚠️ Lỗi reduce concepts từ AI:', error);
+      return formatted;
     }
   }
 

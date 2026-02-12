@@ -32,6 +32,9 @@ function App() {
   // --- STATE CORE ---
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadEtaSeconds, setUploadEtaSeconds] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('idle');
   const [selectedNode, setSelectedNode] = useState(() => {
     const saved = localStorage.getItem('selectedNode');
     return saved ? JSON.parse(saved) : null;
@@ -68,7 +71,71 @@ function App() {
   const [reloadGraphTrigger, setReloadGraphTrigger] = useState(0);
   
   const graphRef = useRef();
+  const uploadStartRef = useRef(null);
+  const processingEstimateRef = useRef(0);
+  const processingStartRef = useRef(null);
+  const processingTimerRef = useRef(null);
   const token = localStorage.getItem('token');
+
+  const PROCESSING_STATS_KEY = 'uploadProcessingStats';
+  const DEFAULT_BASE_PROCESSING_SECONDS = 10;
+  const DEFAULT_SECONDS_PER_MB = 6;
+
+  const getProcessingEstimateSeconds = (fileSizeBytes) => {
+    const sizeMb = Math.max(fileSizeBytes / (1024 * 1024), 0.1);
+    let secondsPerMb = DEFAULT_SECONDS_PER_MB;
+    let baseSeconds = DEFAULT_BASE_PROCESSING_SECONDS;
+
+    try {
+      const raw = localStorage.getItem(PROCESSING_STATS_KEY);
+      if (raw) {
+        const stats = JSON.parse(raw);
+        if (stats?.totalMb > 0 && stats?.totalSeconds > 0) {
+          secondsPerMb = stats.totalSeconds / stats.totalMb;
+        }
+      }
+    } catch (error) {
+      console.warn('Không thể đọc thống kê upload:', error);
+    }
+
+    return Math.max(1, Math.round(baseSeconds + secondsPerMb * sizeMb));
+  };
+
+  const saveProcessingStats = (fileSizeBytes, totalSeconds) => {
+    const sizeMb = Math.max(fileSizeBytes / (1024 * 1024), 0.1);
+    try {
+      const raw = localStorage.getItem(PROCESSING_STATS_KEY);
+      const stats = raw ? JSON.parse(raw) : {};
+      const totalMb = (stats.totalMb || 0) + sizeMb;
+      const totalSecondsAccum = (stats.totalSeconds || 0) + totalSeconds;
+      localStorage.setItem(
+        PROCESSING_STATS_KEY,
+        JSON.stringify({ totalMb, totalSeconds: totalSecondsAccum })
+      );
+    } catch (error) {
+      console.warn('Không thể lưu thống kê upload:', error);
+    }
+  };
+
+  const startProcessingCountdown = (estimateSeconds) => {
+    if (processingTimerRef.current) {
+      clearInterval(processingTimerRef.current);
+    }
+
+    processingStartRef.current = Date.now();
+    setUploadEtaSeconds(Math.max(0, estimateSeconds));
+
+    processingTimerRef.current = setInterval(() => {
+      if (!processingStartRef.current) return;
+      const elapsed = (Date.now() - processingStartRef.current) / 1000;
+      const remaining = Math.max(0, Math.round(estimateSeconds - elapsed));
+      setUploadEtaSeconds(remaining);
+      if (remaining <= 0) {
+        clearInterval(processingTimerRef.current);
+        processingTimerRef.current = null;
+      }
+    }, 1000);
+  };
 
   // Cấu hình Axios để luôn gửi Token
   const api = axios.create({
@@ -157,6 +224,16 @@ function App() {
     if (!file || !selectedSubject) return;
 
     setLoading(true);
+    setUploadProgress(0);
+    setUploadEtaSeconds(null);
+    setUploadStatus('uploading');
+    uploadStartRef.current = Date.now();
+    processingEstimateRef.current = getProcessingEstimateSeconds(file.size);
+    processingStartRef.current = null;
+    if (processingTimerRef.current) {
+      clearInterval(processingTimerRef.current);
+      processingTimerRef.current = null;
+    }
     setPdfFile(file);
     setCurrentPage(1);
     localStorage.setItem('currentPage', '1');
@@ -169,7 +246,29 @@ function App() {
 
     try {
       const response = await api.post('/documents/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const total = progressEvent.total || 0;
+          if (!total) return;
+          const loaded = progressEvent.loaded || 0;
+          const percent = Math.min(100, Math.round((loaded / total) * 100));
+          setUploadProgress(percent);
+
+          if (uploadStartRef.current && loaded > 0) {
+            const elapsedSeconds = (Date.now() - uploadStartRef.current) / 1000;
+            const totalSeconds = (elapsedSeconds * total) / loaded;
+            const etaSeconds = Math.max(0, Math.round(totalSeconds - elapsedSeconds));
+            const totalEta = Math.max(0, etaSeconds + (processingEstimateRef.current || 0));
+            setUploadEtaSeconds(totalEta);
+          }
+
+          if (percent >= 100) {
+            setUploadStatus('processing');
+            if (!processingStartRef.current) {
+              startProcessingCountdown(processingEstimateRef.current || 0);
+            }
+          }
+        }
       });
       
       // Upload xong: cập nhật PDF và mở lên
@@ -179,11 +278,34 @@ function App() {
       
       // Reload lại Graph
       await handleSelectSubject(selectedSubject);
+
+      setUploadProgress(100);
+      setUploadEtaSeconds(0);
+      setUploadStatus('done');
+      if (processingTimerRef.current) {
+        clearInterval(processingTimerRef.current);
+        processingTimerRef.current = null;
+      }
+      if (uploadStartRef.current) {
+        const totalSeconds = Math.round((Date.now() - uploadStartRef.current) / 1000);
+        saveProcessingStats(file.size, totalSeconds);
+      }
+      setTimeout(() => {
+        setUploadProgress(0);
+        setUploadEtaSeconds(null);
+        setUploadStatus('idle');
+      }, 2000);
       
     } catch (error) {
       console.error("Lỗi:", error);
       alert("Lỗi upload.");
       setLoading(false);
+      setUploadStatus('error');
+      setUploadEtaSeconds(null);
+      if (processingTimerRef.current) {
+        clearInterval(processingTimerRef.current);
+        processingTimerRef.current = null;
+      }
     }
   };
 
@@ -633,6 +755,9 @@ function App() {
           selectedSubject={selectedSubject}
           graphData={graphData}
           loading={loading}
+          uploadProgress={uploadProgress}
+          uploadEtaSeconds={uploadEtaSeconds}
+          uploadStatus={uploadStatus}
           onLoadDocuments={loadDocuments}
           onFileUpload={handleFileUpload}
           onAddConcept={() => setIsAddConceptOpen(true)}
