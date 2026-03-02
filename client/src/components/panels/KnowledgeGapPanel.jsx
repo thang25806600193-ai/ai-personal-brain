@@ -43,6 +43,8 @@ export default function KnowledgeGapPanel({ subjects, token }) {
         <ul className="list-disc pl-5 space-y-1">
           <li>+ liên kết trong graph (tối đa +20)</li>
           <li>+ có định nghĩa (+10) • có ví dụ (+5)</li>
+          <li>+ độ quan trọng concept (importance: degree + số concept phụ thuộc)</li>
+          <li>+ trọng số nền tảng (prerequisite depth / foundation weight)</li>
           <li>- sai trong trắc nghiệm (mỗi lần sai -10, tối đa -40)</li>
           <li>- lâu chưa ôn (mỗi 7 ngày -5, tối đa -20)</li>
         </ul>
@@ -117,9 +119,23 @@ function ConceptList({ title, icon, items }) {
           {items.map((c) => (
             <div key={c.conceptId} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
               <div className="flex items-center justify-between">
-                <div className="text-white font-medium truncate">{c.term}</div>
+                <div className="text-white font-medium truncate">{c.title || c.term}</div>
                 <div className="text-xs text-slate-400">{c.score}%</div>
               </div>
+              {(c.importanceScore !== undefined || c.foundationWeight !== undefined) && (
+                <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-400">
+                  {c.importanceScore !== undefined && (
+                    <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+                      Importance: {Math.round(c.importanceScore * 100)}
+                    </span>
+                  )}
+                  {c.foundationWeight !== undefined && (
+                    <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                      Foundation: {Math.round(c.foundationWeight * 100)}
+                    </span>
+                  )}
+                </div>
+              )}
               {c.reasons?.length > 0 && (
                 <div className="text-xs text-slate-400 mt-2">
                   {c.reasons.join(' • ')}

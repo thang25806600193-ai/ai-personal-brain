@@ -6,6 +6,7 @@
 
 const AIProviderFactory = require('../factories/AIProviderFactory');
 const { HfInference } = require('@huggingface/inference');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class AIService {
   constructor(primaryProvider = 'gemini', secondaryProvider = 'openai-compatible', tertiaryProvider = 'groq', timeout = 30000) {
@@ -15,6 +16,17 @@ class AIService {
       tertiaryProvider
     );
     this.hf = new HfInference(process.env.HF_ACCESS_TOKEN);
+    this.embeddingModel = null;
+    if (process.env.GOOGLE_API_KEY) {
+      try {
+        const googleAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+        this.embeddingModel = googleAI.getGenerativeModel({
+          model: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004'
+        });
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize Gemini embedding model:', error.message);
+      }
+    }
     this.timeout = timeout; // AI request timeout in milliseconds
   }
 
@@ -198,9 +210,64 @@ class AIService {
         : 'Có node phù hợp → đề xuất liên kết',
     };
   }
+
+  _normalizeEmbedding(values, targetDim = 768) {
+    if (!Array.isArray(values)) return null;
+
+    const vector = values
+      .flat(Infinity)
+      .map((v) => Number(v))
+      .filter((v) => Number.isFinite(v));
+
+    if (vector.length === 0) return null;
+
+    let adjusted = vector;
+    if (adjusted.length > targetDim) {
+      adjusted = adjusted.slice(0, targetDim);
+    } else if (adjusted.length < targetDim) {
+      adjusted = [...adjusted, ...Array(targetDim - adjusted.length).fill(0)];
+    }
+
+    const magnitude = Math.sqrt(adjusted.reduce((sum, val) => sum + val * val, 0));
+    if (magnitude === 0) return adjusted;
+
+    return adjusted.map((v) => v / magnitude);
+  }
+
+  async embedText(text) {
+    const cleanText = String(text || '').trim();
+    if (!cleanText) return null;
+
+    try {
+      if (this.embeddingModel) {
+        const result = await Promise.race([
+          this.embeddingModel.embedContent(cleanText),
+          this._createTimeoutPromise(this.timeout, 'Embedding request')
+        ]);
+
+        const values = result?.embedding?.values;
+        const normalized = this._normalizeEmbedding(values, 768);
+        if (normalized) return normalized;
+      }
+    } catch (error) {
+      console.warn('⚠️ Gemini embedding failed, fallback to HF:', error.message);
+    }
+
+    try {
+      if (process.env.HF_ACCESS_TOKEN) {
+        const hfVector = await this.hf.featureExtraction({
+          model: process.env.HF_EMBEDDING_MODEL || 'intfloat/multilingual-e5-small',
+          inputs: cleanText,
+        });
+        const normalized = this._normalizeEmbedding(hfVector, 768);
+        if (normalized) return normalized;
+      }
+    } catch (error) {
+      console.warn('⚠️ HuggingFace embedding failed:', error.message);
+    }
+
+    return null;
+  }
 }
-
-module.exports = AIService;
-
 
 module.exports = AIService;

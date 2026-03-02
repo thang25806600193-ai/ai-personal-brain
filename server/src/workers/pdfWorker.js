@@ -3,6 +3,8 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { getPrismaClient } = require('../config/database');
 const AIService = require('../services/aiService');
+const VectorSearchService = require('../services/vectorSearchService');
+const RelationDiscoveryService = require('../services/relationDiscoveryService');
 
 // PDF parsing utilities
 const pdfParse = require('pdf-parse');
@@ -18,6 +20,8 @@ class PdfWorker {
     this.connection = null;
     this.prisma = getPrismaClient();
     this.aiService = new AIService();
+    this.vectorSearchService = new VectorSearchService(this.prisma, this.aiService);
+    this.relationDiscoveryService = new RelationDiscoveryService(this.aiService);
   }
 
   /**
@@ -107,7 +111,7 @@ class PdfWorker {
       // Step 4: Save concepts to database (80%)
       await job.updateProgress(80);
       for (const concept of concepts) {
-        await this.prisma.concept.create({
+        const created = await this.prisma.concept.create({
           data: {
             term: concept.term,
             definition: concept.definition,
@@ -116,7 +120,40 @@ class PdfWorker {
             documentId: documentId,
           },
         });
+        concept.id = created.id;
       }
+
+      const relationCandidates = this.relationDiscoveryService.detectRelations(
+        concepts,
+        this.chunkText(text, 2200)
+      );
+
+      for (const relation of relationCandidates) {
+        const exists = await this.prisma.relation.findFirst({
+          where: {
+            sourceId: relation.sourceId,
+            targetId: relation.targetId,
+            type: relation.type,
+          },
+        });
+
+        if (!exists) {
+          await this.prisma.relation.create({
+            data: {
+              sourceId: relation.sourceId,
+              targetId: relation.targetId,
+              type: relation.type,
+            },
+          });
+        }
+      }
+
+      await this.vectorSearchService.indexDocument({
+        subjectId,
+        documentId,
+        rawText: text,
+        concepts,
+      });
 
       // Step 5: Update document status to completed (100%)
       await job.updateProgress(100);

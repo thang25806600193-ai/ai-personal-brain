@@ -6,15 +6,18 @@
 const fs = require('fs');
 const pdf = require('pdf-parse');
 const ValidationException = require('../exceptions/ValidationException');
+const RelationDiscoveryService = require('./relationDiscoveryService');
 
 class DocumentService {
-  constructor(documentRepository, conceptRepository, subjectRepository, aiService, cacheService, queueService = null) {
+  constructor(documentRepository, conceptRepository, subjectRepository, aiService, cacheService, queueService = null, vectorSearchService = null) {
     this.documentRepository = documentRepository;
     this.conceptRepository = conceptRepository;
     this.subjectRepository = subjectRepository;
     this.aiService = aiService;
     this.cacheService = cacheService;
     this.queueService = queueService;
+    this.vectorSearchService = vectorSearchService;
+    this.relationDiscoveryService = new RelationDiscoveryService(aiService);
   }
 
   /**
@@ -112,7 +115,18 @@ class DocumentService {
       const concepts = await this._extractConceptsViaAI(pages, fullText);
 
       // Lưu concepts vào DB với deduplication
-      await this._saveConcepts(concepts, newDoc.id, subjectId);
+      const createdConcepts = await this._saveConcepts(concepts, newDoc.id, subjectId);
+
+      await this._createAutoRelations(createdConcepts, pages);
+
+      if (this.vectorSearchService) {
+        await this.vectorSearchService.indexDocument({
+          subjectId,
+          documentId: newDoc.id,
+          pageTexts: pages,
+          concepts: createdConcepts,
+        });
+      }
 
       await this._invalidateSubjectCaches(subjectId);
 
@@ -135,6 +149,10 @@ class DocumentService {
    * Xóa document
    */
   async deleteDocument(documentId) {
+    if (this.vectorSearchService) {
+      await this.vectorSearchService.removeDocumentEmbeddings(documentId);
+    }
+
     const document = await this.documentRepository.deleteWithRelations(documentId);
 
     // Xóa file từ disk
@@ -461,19 +479,41 @@ class DocumentService {
    * Private method: Lưu concepts với deduplication
    */
   async _saveConcepts(concepts, documentId, subjectId) {
+    const createdConcepts = [];
+
     for (const concept of concepts) {
       const normalizedTerm = concept.term.toLowerCase().trim();
 
       // Kiểm tra xem concept đã tồn tại trong subject chưa
       // (Placeholder: implement concept deduplication logic)
 
-      await this.conceptRepository.create({
+      const created = await this.conceptRepository.create({
         term: concept.term,
         definition: concept.definition,
         example: concept.example || null,
         pageNumber: concept.page || 1,
         documentId,
       });
+
+      createdConcepts.push(created);
+    }
+
+    return createdConcepts;
+  }
+
+  async _createAutoRelations(createdConcepts, pages = []) {
+    if (!Array.isArray(createdConcepts) || createdConcepts.length < 2) return;
+
+    const textChunks = this._chunkSentences(pages, {
+      targetWords: 700,
+      overlapRatio: 0.12,
+    }).map((chunk) => chunk.text);
+
+    const relations = this.relationDiscoveryService.detectRelations(createdConcepts, textChunks);
+    if (relations.length === 0) return;
+
+    for (const relation of relations) {
+      await this.conceptRepository.createRelation(relation.sourceId, relation.targetId, relation.type);
     }
   }
 }

@@ -179,7 +179,7 @@ export default function CopilotPanel({ selectedSubject, token }) {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
                         {getPriorityIcon(concept.priority)}
-                        <h4 className="text-slate-100 font-medium">{concept.title}</h4>
+                        <h4 className="text-slate-100 font-medium">{concept.title || concept.term}</h4>
                       </div>
                       <p className="text-sm text-slate-400 mb-2">{concept.reason}</p>
                       {concept.score !== undefined && (
@@ -243,7 +243,7 @@ export default function CopilotPanel({ selectedSubject, token }) {
                         <Clock className={`w-4 h-4 ${
                           reminder.urgency === 'high' ? 'text-red-400' : 'text-yellow-400'
                         }`} />
-                        <h4 className="text-slate-100 font-medium">{reminder.title}</h4>
+                        <h4 className="text-slate-100 font-medium">{reminder.title || reminder.term}</h4>
                       </div>
                       <p className="text-sm text-slate-400 mb-1">{reminder.reason}</p>
                       <p className="text-xs text-slate-500">

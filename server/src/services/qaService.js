@@ -6,9 +6,10 @@
 const ValidationException = require('../exceptions/ValidationException');
 
 class QAService {
-  constructor(subjectRepository, aiService) {
+  constructor(subjectRepository, aiService, vectorSearchService = null) {
     this.subjectRepository = subjectRepository;
     this.aiService = aiService;
+    this.vectorSearchService = vectorSearchService;
   }
 
   /**
@@ -21,10 +22,14 @@ class QAService {
 
     console.log(`💬 Câu hỏi: "${question}"`);
 
+    const semanticMatches = this.vectorSearchService
+      ? await this.vectorSearchService.searchSimilar(subjectId, question, 6)
+      : [];
+
     // Lấy danh sách concepts của subject
     const conceptsInDB = await this.subjectRepository.findConceptsBySubject(subjectId);
 
-    if (conceptsInDB.length === 0) {
+    if (conceptsInDB.length === 0 && semanticMatches.length === 0) {
       console.log('⚠️ Chưa có concepts nào trong subject');
       return {
         answer: 'Xin lỗi, môn học này chưa có tài liệu hoặc khái niệm nào. Hãy upload tài liệu trước.',
@@ -34,13 +39,23 @@ class QAService {
       };
     }
 
+    if (conceptsInDB.length === 0 && semanticMatches.length > 0) {
+      const { answer, contextSource } = await this._generateAnswer(question, [], 'general', semanticMatches);
+      return {
+        answer,
+        concepts: [],
+        foundConcepts: contextSource,
+        fromGeneralKnowledge: false,
+      };
+    }
+
     // Trích xuất concepts liên quan từ câu hỏi
     const extractedTerms = await this.aiService.extractConceptsFromQuestion(
       question,
       conceptsInDB
     );
 
-    if (extractedTerms.length === 0) {
+    if (extractedTerms.length === 0 && semanticMatches.length === 0) {
       console.log('⚠️ Không nhận diện được khái niệm nào');
       return {
         answer:
@@ -85,13 +100,13 @@ class QAService {
     }
 
     // Sinh câu trả lời
-    const { answer, contextSource } = await this._generateAnswer(question, detailedConcepts, intent);
+    const { answer, contextSource } = await this._generateAnswer(question, detailedConcepts, intent, semanticMatches);
 
     return {
       answer,
       concepts: extractedTerms,
       foundConcepts: contextSource,
-      fromGeneralKnowledge: detailedConcepts.length === 0,
+      fromGeneralKnowledge: detailedConcepts.length === 0 && semanticMatches.length === 0,
     };
   }
 
@@ -191,11 +206,25 @@ class QAService {
   /**
    * Private: Sinh câu trả lời từ AI hoặc Knowledge Graph
    */
-  async _generateAnswer(question, concepts, intent = 'general') {
+  async _generateAnswer(question, concepts, intent = 'general', semanticMatches = []) {
     let prompt;
     let contextSource = [];
 
-    if (concepts.length === 0) {
+    const semanticContextSource = semanticMatches.map((row) => ({
+      term: row.sourceType === 'concept' ? 'Concept (semantic)' : 'PDF chunk',
+      definition: row.content,
+      source: row.documentTitle || 'Tài liệu không rõ',
+      page: row.pageNumber || 1,
+      similarity: row.similarity,
+    }));
+
+    const semanticContextText = semanticMatches
+      .map(
+        (row, idx) => `• [${idx + 1}] (${Math.round((row.similarity || 0) * 100)}%) ${row.content}\n  (Nguồn: ${row.documentTitle || 'Tài liệu không rõ'}${row.pageNumber ? ` – trang ${row.pageNumber}` : ''})`
+      )
+      .join('\n\n');
+
+    if (concepts.length === 0 && semanticMatches.length === 0) {
       // Không có concept nào có định nghĩa → fallback AI
       prompt = `
         Câu hỏi: "${question}"
@@ -224,12 +253,21 @@ class QAService {
         })
         .join('\n\n');
 
+      if (semanticContextSource.length > 0) {
+        contextSource = [...contextSource, ...semanticContextSource];
+      }
+
+      const semanticSection = semanticContextText
+        ? `\n🔎 NGỮ CẢNH SEMANTIC TỪ VECTOR SEARCH:\n${semanticContextText}\n`
+        : '';
+
       if (intent === 'example' || intent === 'compare' || intent === 'summary' || intent === 'explain') {
         prompt = `
           Bạn là trợ lý học tập. Hãy trả lời câu hỏi dựa trên tài liệu, và nếu tài liệu KHÔNG có ví dụ/so sánh/tổng hợp đầy đủ thì BỔ SUNG kiến thức chung.
           
           📚 KIẾN THỨC TỪ TÀI LIỆU CỦA HỌC VIÊN:
           ${conceptDetails}
+          ${semanticSection}
           
           ❓ CÂU HỎI: "${question}"
           
@@ -250,6 +288,7 @@ class QAService {
           
           📚 KIẾN THỨC TỪ TÀI LIỆU CỦA HỌC VIÊN:
           ${conceptDetails}
+          ${semanticSection}
           
           ❓ CÂU HỎI: "${question}"
           

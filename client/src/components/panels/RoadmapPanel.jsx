@@ -162,6 +162,24 @@ export default function RoadmapPanel({ selectedSubject, token }) {
         </div>
       )}
 
+      {roadmap.learningPath && roadmap.learningPath.length > 0 && (
+        <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+          <h3 className="text-sm font-semibold text-purple-300 mb-2">🧠 Concept chiến lược (quan trọng + nền tảng):</h3>
+          <div className="space-y-2">
+            {roadmap.learningPath
+              .slice()
+              .sort((a, b) => (b.strategicWeight || 0) - (a.strategicWeight || 0))
+              .slice(0, 3)
+              .map((concept) => (
+                <div key={concept.conceptId} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-200 truncate">{concept.title || concept.term}</span>
+                  <span className="text-purple-300 text-xs">SW {Math.round((concept.strategicWeight || 0) * 100)}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Weekly Schedule */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">📅 Kế hoạch học tập theo tuần</h3>

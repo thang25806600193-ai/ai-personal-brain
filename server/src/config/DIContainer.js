@@ -33,6 +33,7 @@ const KnowledgeGapService = require('../services/knowledgeGapService');
 const RoadmapService = require('../services/roadmapService');
 const CacheService = require('../services/cacheService');
 const queueService = require('../services/queueService');
+const VectorSearchService = require('../services/vectorSearchService');
 const CopilotService = require('../services/copilotService');
 const PersonalizedQuizService = require('../services/personalizedQuizService');
 const BatchExplanationService = require('../services/batchExplanationService');
@@ -164,7 +165,8 @@ class DIContainer {
         this.getSubjectRepository(),
         this.getAIService(),
         this.getCacheService(),
-        queueService
+        queueService,
+        this.getVectorSearchService()
       );
     }
     return this.instances.documentService;
@@ -200,10 +202,21 @@ class DIContainer {
     if (!this.instances.qaService) {
       this.instances.qaService = new QAService(
         this.getSubjectRepository(),
-        this.getAIService()
+        this.getAIService(),
+        this.getVectorSearchService()
       );
     }
     return this.instances.qaService;
+  }
+
+  getVectorSearchService() {
+    if (!this.instances.vectorSearchService) {
+      this.instances.vectorSearchService = new VectorSearchService(
+        this.prisma,
+        this.getAIService()
+      );
+    }
+    return this.instances.vectorSearchService;
   }
 
   getUploadService() {

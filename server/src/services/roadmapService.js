@@ -139,6 +139,13 @@ class RoadmapService {
       });
     });
 
+    const getStrategicWeight = (conceptId) => {
+      const gapInfo = gapMap.get(conceptId) || {};
+      const importance = gapInfo.importanceScore || 0;
+      const foundation = gapInfo.foundationWeight || 0;
+      return importance * 0.55 + foundation * 0.45;
+    };
+
     // DFS with priority for weak concepts
     const dfs = (conceptId) => {
       if (visited.has(conceptId)) return;
@@ -160,12 +167,24 @@ class RoadmapService {
       // Add to learning path
       if (!visited.has(conceptId)) {
         const gapInfo = gapMap.get(conceptId) || { category: 'unknown', score: 60 };
+        const strategicWeight = getStrategicWeight(conceptId);
+
+        let priority = 'low';
+        if (gapInfo.category === 'weak' || strategicWeight >= 0.72) {
+          priority = 'high';
+        } else if (gapInfo.category === 'medium' || strategicWeight >= 0.5) {
+          priority = 'medium';
+        }
+
         learningPath.push({
           conceptId: node.concept.id,
           title: node.concept.term, // Field is 'term' not 'title' in schema
           definition: node.concept.definition,
-          priority: gapInfo.category === 'weak' ? 'high' : gapInfo.category === 'medium' ? 'medium' : 'low',
+          priority,
           score: gapInfo.score,
+          importanceScore: gapInfo.importanceScore || 0,
+          foundationWeight: gapInfo.foundationWeight || 0,
+          strategicWeight: Number(strategicWeight.toFixed(3)),
           prerequisiteCount: node.prerequisites.length,
           dependentCount: node.dependents.length
         });
@@ -176,13 +195,17 @@ class RoadmapService {
     };
 
     // Start with weak concepts and their prerequisites
-    const weakConcepts = knowledgeGaps.weak || [];
+    const weakConcepts = [...(knowledgeGaps.weak || [])].sort(
+      (a, b) => getStrategicWeight(b.conceptId) - getStrategicWeight(a.conceptId)
+    );
     weakConcepts.forEach(weak => {
       dfs(weak.conceptId);
     });
 
     // Then medium concepts
-    const mediumConcepts = knowledgeGaps.medium || [];
+    const mediumConcepts = [...(knowledgeGaps.medium || [])].sort(
+      (a, b) => getStrategicWeight(b.conceptId) - getStrategicWeight(a.conceptId)
+    );
     mediumConcepts.forEach(medium => {
       dfs(medium.conceptId);
     });
