@@ -107,6 +107,7 @@ cat DEPLOYMENT.md
 - 📘 [DEPLOYMENT.md](DEPLOYMENT.md) - Full step-by-step guide for VPS
 - ⚡ [QUICKSTART_PRODUCTION.md](QUICKSTART_PRODUCTION.md) - Quick reference
 - ✅ [PRODUCTION_READY.md](PRODUCTION_READY.md) - Complete checklist
+- ⚙️ [CI_CD_SETUP.md](CI_CD_SETUP.md) - CI/CD với GitHub Actions
 
 **🐳 Docker Files:**
 - [server/Dockerfile](server/Dockerfile) - Backend container
