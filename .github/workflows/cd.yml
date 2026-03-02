@@ -28,8 +28,10 @@ jobs:
             fi
 
             cd "${{ secrets.DEPLOY_PATH }}"
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git fetch --all
             git reset --hard origin/main
+            NEW_COMMIT=$(git rev-parse HEAD)
 
             if command -v docker-compose >/dev/null 2>&1; then
               DOCKER_COMPOSE="docker-compose"
@@ -42,7 +44,6 @@ jobs:
 
             $DOCKER_COMPOSE pull || true
             $DOCKER_COMPOSE up -d --build --remove-orphans
-            docker image prune -f
 
             HEALTHCHECK_URL="${{ secrets.HEALTHCHECK_URL }}"
             if [ -z "$HEALTHCHECK_URL" ]; then
@@ -53,19 +54,49 @@ jobs:
 
             ATTEMPTS=12
             SLEEP_SECONDS=5
-            for i in $(seq 1 "$ATTEMPTS"); do
-              if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
-                echo "Health check passed"
-                exit 0
-              fi
+            check_health() {
+              local attempts="$1"
+              local sleep_seconds="$2"
 
-              if [ "$i" -lt "$ATTEMPTS" ]; then
-                echo "Health check failed (attempt $i/$ATTEMPTS), retrying in ${SLEEP_SECONDS}s..."
-                sleep "$SLEEP_SECONDS"
-              fi
-            done
+              for i in $(seq 1 "$attempts"); do
+                if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
+                  echo "Health check passed"
+                  return 0
+                fi
+
+                if [ "$i" -lt "$attempts" ]; then
+                  echo "Health check failed (attempt $i/$attempts), retrying in ${sleep_seconds}s..."
+                  sleep "$sleep_seconds"
+                fi
+              done
+
+              return 1
+            }
+
+            if check_health "$ATTEMPTS" "$SLEEP_SECONDS"; then
+              docker image prune -f
+              exit 0
+            fi
 
             echo "Health check failed after $ATTEMPTS attempts"
             $DOCKER_COMPOSE ps
             $DOCKER_COMPOSE logs --tail=200 server || true
+
+            if [ "$PREVIOUS_COMMIT" != "$NEW_COMMIT" ]; then
+              echo "Starting rollback to previous commit: $PREVIOUS_COMMIT"
+              git reset --hard "$PREVIOUS_COMMIT"
+              $DOCKER_COMPOSE up -d --build --remove-orphans
+
+              if check_health "$ATTEMPTS" "$SLEEP_SECONDS"; then
+                echo "Rollback successful. Workflow will fail to notify deployment issue."
+                exit 1
+              fi
+
+              echo "Rollback attempt failed health check"
+              $DOCKER_COMPOSE ps
+              $DOCKER_COMPOSE logs --tail=200 server || true
+              exit 1
+            fi
+
+            echo "Rollback skipped because there is no previous commit to revert"
             exit 1

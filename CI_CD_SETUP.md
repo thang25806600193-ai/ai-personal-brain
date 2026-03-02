@@ -27,7 +27,9 @@ Repo này đã được thêm 2 workflow:
   - `git fetch --all && git reset --hard origin/main`
   - `docker compose up -d --build --remove-orphans` (hoặc `docker-compose` nếu server cũ)
   - Chạy health-check sau deploy (retry tối đa 12 lần, mỗi lần cách 5 giây)
+  - Nếu health-check fail: tự rollback về commit trước deploy và chạy lại containers
   - `docker image prune -f`
+
 
 ---
 
