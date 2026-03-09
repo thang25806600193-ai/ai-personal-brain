@@ -48,6 +48,9 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust Nginx reverse proxy so rate limiter uses real client IP.
+app.set('trust proxy', 1);
+
 // CORS Configuration - MUST be before helmet
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'https://aiinterviewcoach.id.vn',
@@ -77,9 +80,10 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30, // 30 login attempts per 15 minutes (to support Google OAuth retries)
+  max: 40,
   message: 'Too many login attempts, please try again later.',
   skipSuccessfulRequests: true,
+  skip: (req) => req.path === '/google',
 });
 
 app.use(limiter);

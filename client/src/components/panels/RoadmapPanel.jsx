@@ -103,7 +103,7 @@ export default function RoadmapPanel({ selectedSubject, token }) {
   }
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6">
+    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-5 lg:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -119,29 +119,29 @@ export default function RoadmapPanel({ selectedSubject, token }) {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/30">
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
           <div className="flex items-center space-x-2 mb-2">
             <BookOpen className="w-4 h-4 text-blue-400" />
             <span className="text-slate-400 text-sm">Tổng số concept</span>
           </div>
-          <p className="text-2xl font-bold text-slate-100">{roadmap.totalConcepts}</p>
+          <p className="text-xl font-bold text-slate-100">{roadmap.totalConcepts}</p>
         </div>
 
-        <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/30">
+        <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
           <div className="flex items-center space-x-2 mb-2">
             <Calendar className="w-4 h-4 text-purple-400" />
             <span className="text-slate-400 text-sm">Thời gian dự kiến</span>
           </div>
-          <p className="text-2xl font-bold text-slate-100">{roadmap.estimatedWeeks} tuần</p>
+          <p className="text-xl font-bold text-slate-100">{roadmap.estimatedWeeks} tuần</p>
         </div>
 
-        <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/30">
+        <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
           <div className="flex items-center space-x-2 mb-2">
             <TrendingUp className="w-4 h-4 text-green-400" />
             <span className="text-slate-400 text-sm">Kiến thức nền tảng</span>
           </div>
-          <p className="text-2xl font-bold text-slate-100">{roadmap.foundationalConcepts.length}</p>
+          <p className="text-xl font-bold text-slate-100">{roadmap.foundationalConcepts.length}</p>
         </div>
       </div>
 
@@ -183,7 +183,8 @@ export default function RoadmapPanel({ selectedSubject, token }) {
       {/* Weekly Schedule */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">📅 Kế hoạch học tập theo tuần</h3>
-        
+
+        <div className="max-h-[24rem] lg:max-h-[28rem] overflow-y-auto pr-1 space-y-3">
         {roadmap.weeklySchedule.map((week) => (
           <div
             key={week.weekNumber}
@@ -191,14 +192,14 @@ export default function RoadmapPanel({ selectedSubject, token }) {
             onClick={() => setSelectedWeek(selectedWeek === week.weekNumber ? null : week.weekNumber)}
           >
             {/* Week Header */}
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-10 h-10 bg-purple-500/20 rounded-lg">
+                <div className="flex items-center justify-center w-9 h-9 bg-purple-500/20 rounded-lg">
                   <span className="text-purple-400 font-bold">{week.weekNumber}</span>
                 </div>
-                <div>
-                  <h4 className="text-slate-100 font-semibold">{week.title}</h4>
-                  <p className="text-sm text-slate-400">{week.focus}</p>
+                <div className="min-w-0">
+                  <h4 className="text-slate-100 font-semibold truncate">{week.title}</h4>
+                  <p className="text-sm text-slate-400 truncate">{week.focus}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -219,7 +220,7 @@ export default function RoadmapPanel({ selectedSubject, token }) {
 
             {/* Week Details (Expandable) */}
             {selectedWeek === week.weekNumber && (
-              <div className="px-4 pb-4 space-y-2 border-t border-slate-600/30">
+              <div className="px-3.5 pb-3.5 space-y-2 border-t border-slate-600/30">
                 {week.concepts.map((concept) => (
                   <div
                     key={concept.id}
@@ -251,6 +252,7 @@ export default function RoadmapPanel({ selectedSubject, token }) {
             )}
           </div>
         ))}
+        </div>
       </div>
 
       {/* Footer Note */}
