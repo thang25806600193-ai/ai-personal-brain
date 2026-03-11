@@ -1,0 +1,83 @@
+body {
+  margin: 0;
+  width: 360px;
+  min-height: 360px;
+  background: #020617;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.container {
+  padding: 14px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  color: #67e8f9;
+}
+
+.subtitle {
+  margin: 6px 0 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.card {
+  background: #0f172a;
+  border: 1px solid rgba(100, 116, 139, 0.4);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+input {
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #e2e8f0;
+  padding: 8px;
+  font-size: 12px;
+}
+
+button {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #0284c7, #2563eb);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px;
+  cursor: pointer;
+}
+
+button.secondary {
+  margin-top: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.status {
+  min-height: 18px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.success {
+  color: #34d399;
+}
+
+.error {
+  color: #f87171;
+}

@@ -482,13 +482,18 @@ function App() {
   };
 
   const handleNodeClick = useCallback((node) => {
-    if (node.type === 'Source' || node.type === 'PersonalNotes') return;
+    if (node.type === 'Source' || node.type === 'PersonalNotes' || node.type === 'Web_Article') return;
     setSelectedNode(node);
     localStorage.setItem('selectedNode', JSON.stringify(node));
     // Không tự động mở PDF - chỉ hiển thị thông tin
   }, []);
 
   const handleViewInDocument = (node) => {
+    if (node?.sourceUrl) {
+      window.open(node.sourceUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     // Sử dụng documentId từ node
     if (!node.documentId) {
       alert("Không tìm thấy thông tin tài liệu của khái niệm này");

@@ -13,11 +13,14 @@ export default function NodeInfoPanel({
   if (!selectedNode) return null;
 
   const isPersonalNote = selectedNode.type === 'PersonalNote' || selectedNode.isPersonalNote;
+  const isWebConcept = selectedNode.type === 'WebConcept' || selectedNode.isWebConcept;
   const headerColor = isPersonalNote ? 'text-yellow-400' : 'text-blue-400';
   const badgeColor = isPersonalNote 
     ? 'bg-yellow-600/20 text-yellow-300 border-yellow-600/30' 
-    : 'bg-blue-600/20 text-blue-300 border-blue-600/30';
-  const badgeText = isPersonalNote ? '📝 Ghi chú cá nhân' : '📚 Khái niệm từ tài liệu';
+    : (isWebConcept
+      ? 'bg-violet-600/20 text-violet-300 border-violet-600/30'
+      : 'bg-blue-600/20 text-blue-300 border-blue-600/30');
+  const badgeText = isPersonalNote ? '📝 Ghi chú cá nhân' : (isWebConcept ? '🌐 Khái niệm từ web' : '📚 Khái niệm từ tài liệu');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTerm, setEditTerm] = useState('');
@@ -183,14 +186,28 @@ export default function NodeInfoPanel({
             <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Vị trí trong tài liệu</p>
             <div className="text-sm">
               <p className="text-slate-300"><span className="text-blue-400">📄 Trang:</span> {selectedNode.page || '?'}</p>
-              <p className="text-slate-300"><span className="text-blue-400">📚 Tài liệu:</span>
-                <button
-                  onClick={onOpenDocumentList}
-                  className="text-blue-400 hover:text-blue-300 underline ml-1"
-                >
-                  Xem danh sách
-                </button>
-              </p>
+              {selectedNode.sourceUrl ? (
+                <p className="text-slate-300">
+                  <span className="text-blue-400">🌐 Nguồn web:</span>
+                  <a
+                    href={selectedNode.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 underline ml-1 break-all"
+                  >
+                    Mở nguồn gốc
+                  </a>
+                </p>
+              ) : (
+                <p className="text-slate-300"><span className="text-blue-400">📚 Tài liệu:</span>
+                  <button
+                    onClick={onOpenDocumentList}
+                    className="text-blue-400 hover:text-blue-300 underline ml-1"
+                  >
+                    Xem danh sách
+                  </button>
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -211,7 +228,7 @@ export default function NodeInfoPanel({
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
             >
               <FileText size={16} />
-              Xem trong tài liệu
+              {selectedNode?.sourceUrl ? 'Xem nguồn web gốc' : 'Xem trong tài liệu'}
             </button>
           )}
 

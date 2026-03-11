@@ -101,6 +101,40 @@ class QueueService {
   }
 
   /**
+   * Add web clip processing job
+   * @param {object} jobData - Job data
+   * @param {string} jobData.userId - Owner user ID
+   * @param {string} jobData.subjectId - Subject ID
+   * @param {string} jobData.text - Highlighted text content
+   * @param {string} jobData.sourceUrl - Source page URL
+   * @param {string} jobData.sourceTitle - Source page title
+   * @returns {Promise<object>} - Job info
+   */
+  async addWebClipProcessingJob(jobData) {
+    try {
+      const queue = this.getQueue('web-clip-processing');
+
+      const hashSource = `${jobData.subjectId}:${jobData.sourceUrl || ''}:${jobData.text || ''}`;
+      const hash = Buffer.from(hashSource).toString('base64').slice(0, 24).replace(/[^a-zA-Z0-9]/g, 'x');
+
+      const job = await queue.add('process-web-clip', jobData, {
+        jobId: `webclip-${hash}-${Date.now()}`,
+        priority: 2,
+      });
+
+      logger.info(`Web clip processing job added: ${job.id} for subject ${jobData.subjectId}`);
+
+      return {
+        jobId: job.id,
+        status: 'pending',
+      };
+    } catch (error) {
+      logger.error('Failed to add web clip processing job:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get job status
    * @param {string} queueName - Queue name
    * @param {string} jobId - Job ID
@@ -123,6 +157,7 @@ class QueueService {
         status: state,
         progress,
         data: job.data,
+        returnValue: job.returnvalue,
         failedReason: job.failedReason,
         finishedOn: job.finishedOn,
         processedOn: job.processedOn,

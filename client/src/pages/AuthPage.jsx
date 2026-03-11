@@ -12,7 +12,50 @@ const AuthPage = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [nodes, setNodes] = useState([]);
   const [emailSent, setEmailSent] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const guideSteps = [
+    {
+      title: 'Chào mừng bạn đến với AI Personal Brain',
+      description: 'Đây là popup hướng dẫn nhanh cho người mới. Bạn có thể xem lại bất kỳ lúc nào bằng nút Hướng dẫn nhanh.',
+      note: 'Mất khoảng 1 phút để đọc hết 6 bước.'
+    },
+    {
+      title: 'Bước 1: Đăng ký tài khoản',
+      description: 'Nếu chưa có tài khoản, nhấn Đăng ký ngay, điền Họ tên, Email và Mật khẩu rồi gửi form.',
+      note: 'Sau khi đăng ký, hãy mở email để xác thực tài khoản trước khi đăng nhập.'
+    },
+    {
+      title: 'Bước 2: Đăng nhập',
+      description: 'Bạn có thể đăng nhập bằng Email/Mật khẩu hoặc nút Google để vào hệ thống nhanh hơn.',
+      note: 'Nếu đăng nhập bằng Google, hãy sử dụng đúng email đã đăng ký trước đó.'
+    },
+    {
+      title: 'Bước 3: Tạo môn học và tài liệu',
+      description: 'Sau khi vào hệ thống, tạo môn học mới, sau đó tải file PDF để AI trích xuất concept tự động.',
+      note: 'Nên đặt tên môn học rõ ràng để dễ tìm kiếm và quản lý.'
+    },
+    {
+      title: 'Bước 4: Làm việc với đồ thị tri thức',
+      description: 'Click trực tiếp vào concept trên đồ thị để xem định nghĩa, vị trí trong tài liệu và các thao tác liên quan.',
+      note: 'Bạn có thể cuộn chuột để zoom và kéo để di chuyển khung nhìn.'
+    },
+    {
+      title: 'Bước 5: Dùng tính năng học tập AI',
+      description: 'Trong Dashboard, sử dụng Ôn tập, Lộ trình học tập, Hỏi AI và Kiến thức yếu để học theo thứ tự ưu tiên.',
+      note: 'Hãy học theo từng tuần trong Lộ trình để tăng tốc độ nắm vững kiến thức.'
+    }
+  ];
+
+  const closeGuide = (markAsSeen = true) => {
+    if (markAsSeen) {
+      localStorage.setItem('newUserGuideSeen', '1');
+    }
+    setShowGuide(false);
+    setGuideStep(0);
+  };
 
   useEffect(() => {
     const generateNodes = () => {
@@ -25,6 +68,13 @@ const AuthPage = ({ onLoginSuccess }) => {
       setNodes(newNodes);
     };
     generateNodes();
+  }, []);
+
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('newUserGuideSeen');
+    if (!hasSeenGuide) {
+      setShowGuide(true);
+    }
   }, []);
 
   const handleSubmit = async (e) => {
@@ -439,6 +489,16 @@ const AuthPage = ({ onLoginSuccess }) => {
                   {isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}
                 </button>
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setGuideStep(0);
+                  setShowGuide(true);
+                }}
+                className="mt-3 text-xs text-cyan-300 hover:text-cyan-200 underline underline-offset-4"
+              >
+                Hướng dẫn nhanh cho người mới
+              </button>
             </div>
 
             <div className="lg:hidden mt-8 pt-6 border-t border-slate-700/50 text-center opacity-70 hover:opacity-100 transition-opacity">
@@ -448,6 +508,85 @@ const AuthPage = ({ onLoginSuccess }) => {
           </div>
         </div>
       </div>
+
+      {showGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm"
+            onClick={() => closeGuide(true)}
+          />
+
+          <div className="relative w-full max-w-lg rounded-2xl border border-cyan-500/30 bg-slate-900/95 p-5 md:p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs uppercase tracking-wide text-cyan-300">Hướng dẫn bắt đầu</p>
+              <button
+                type="button"
+                onClick={() => closeGuide(true)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <h3 className="text-xl md:text-2xl font-bold text-white mb-2">
+              {guideSteps[guideStep].title}
+            </h3>
+            <p className="text-slate-300 leading-relaxed text-sm md:text-base">
+              {guideSteps[guideStep].description}
+            </p>
+            <div className="mt-3 rounded-lg border border-slate-700 bg-slate-800/70 px-3 py-2 text-xs text-slate-300">
+              Mẹo: {guideSteps[guideStep].note}
+            </div>
+
+            <div className="flex items-center gap-2 mt-5 mb-4">
+              {guideSteps.map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`h-1.5 rounded-full transition-all ${idx === guideStep ? 'w-8 bg-cyan-400' : 'w-3 bg-slate-600'}`}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => closeGuide(true)}
+                className="px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition"
+              >
+                Bỏ qua
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={guideStep === 0}
+                  onClick={() => setGuideStep((s) => Math.max(0, s - 1))}
+                  className="px-3 py-2 rounded-lg text-sm border border-slate-600 text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+                {guideStep < guideSteps.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuideStep((s) => Math.min(guideSteps.length - 1, s + 1))}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition"
+                  >
+                    Tiếp
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => closeGuide(true)}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition"
+                  >
+                    Bắt đầu sử dụng
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

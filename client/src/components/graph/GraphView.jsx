@@ -13,6 +13,32 @@ export default function GraphView({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [hoveredNode, setHoveredNode] = useState(null);
 
+  const drawRoundedRect = (ctx, x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  };
+
+  const getNodeGeometry = (node) => {
+    const isSourceNode = node.type === 'Source' || node.type === 'Web_Article';
+    const nodeSize = Math.max(node.val ? node.val * 0.75 : 10, 9);
+    return {
+      isSourceNode,
+      nodeSize,
+      width: isSourceNode ? nodeSize * 2.4 : nodeSize * 2,
+      height: isSourceNode ? nodeSize * 1.8 : nodeSize * 2,
+      radius: nodeSize,
+    };
+  };
+
   console.log('GraphView render:', { selectedSubject, graphData, size });
 
   useEffect(() => {
@@ -48,36 +74,42 @@ export default function GraphView({
             backgroundColor="#1e293b"
             onNodeClick={onNodeClick}
             onNodeHover={(node) => setHoveredNode(node || null)}
+            nodePointerAreaPaint={(node, color, ctx) => {
+              const { isSourceNode, width, height, radius } = getNodeGeometry(node);
+              ctx.fillStyle = color;
+
+              // Keep click target tighter than visual size to avoid selecting nearby nodes.
+              if (isSourceNode) {
+                const hitWidth = width * 0.82;
+                const hitHeight = height * 0.82;
+                drawRoundedRect(
+                  ctx,
+                  node.x - hitWidth / 2,
+                  node.y - hitHeight / 2,
+                  hitWidth,
+                  hitHeight,
+                  5
+                );
+                ctx.fill();
+                return;
+              }
+
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, radius * 0.78, 0, 2 * Math.PI, false);
+              ctx.fill();
+            }}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const label = node.name || '';
-              const isSourceNode = node.type === 'Source';
+              const { isSourceNode, width, height, radius } = getNodeGeometry(node);
               const isHovered = hoveredNode?.id === node.id;
               const isSelected = node.id === selectedNode?.id;
-
-              const nodeSize = Math.max(node.val ? node.val * 0.75 : 10, 9);
-              const width = isSourceNode ? nodeSize * 2.4 : nodeSize * 2;
-              const height = isSourceNode ? nodeSize * 1.8 : nodeSize * 2;
-              const radius = nodeSize;
+              const isWebArticle = node.type === 'Web_Article';
 
               const baseFontSize = (isHovered ? 20 : 16) / globalScale;
 
-              const drawRoundedRect = (x, y, w, h, r) => {
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.lineTo(x + w - r, y);
-                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-                ctx.lineTo(x + w, y + h - r);
-                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                ctx.lineTo(x + r, y + h);
-                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-                ctx.lineTo(x, y + r);
-                ctx.quadraticCurveTo(x, y, x + r, y);
-                ctx.closePath();
-              };
-
               if (isSourceNode) {
-                ctx.fillStyle = '#FDBA74';
-                drawRoundedRect(node.x - width / 2, node.y - height / 2, width, height, 6 / globalScale);
+                ctx.fillStyle = isWebArticle ? '#C4B5FD' : '#FDBA74';
+                drawRoundedRect(ctx, node.x - width / 2, node.y - height / 2, width, height, 6 / globalScale);
                 ctx.fill();
 
                 ctx.strokeStyle = isSelected ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
@@ -85,10 +117,10 @@ export default function GraphView({
                 ctx.stroke();
 
                 ctx.font = `${Math.max(11 / globalScale, 8 / globalScale)}px Sans-Serif`;
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+                ctx.fillStyle = isWebArticle ? 'rgba(49, 46, 129, 0.95)' : 'rgba(15, 23, 42, 0.95)';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('📄', node.x, node.y - height * 0.15);
+                ctx.fillText(isWebArticle ? '🌐' : '📄', node.x, node.y - height * 0.15);
               } else {
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
@@ -151,7 +183,7 @@ export default function GraphView({
           {hoveredNode && (
             <div className="absolute top-4 left-4 max-w-sm p-3 rounded-xl bg-slate-900/90 border border-slate-600 shadow-2xl backdrop-blur-sm pointer-events-none">
               <p className="text-xs uppercase tracking-wide text-cyan-300 mb-1">
-                {hoveredNode.type === 'Source' ? 'Tài liệu PDF' : 'Khái niệm'}
+                {hoveredNode.type === 'Source' ? 'Tài liệu PDF' : (hoveredNode.type === 'Web_Article' ? 'Nguồn Web' : 'Khái niệm')}
               </p>
               <p className="text-white font-semibold text-sm">{hoveredNode.name}</p>
               {hoveredNode.definition && hoveredNode.type !== 'Source' && (

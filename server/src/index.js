@@ -28,6 +28,7 @@ const { getContainer } = require('./config/DIContainer');
 // Import queue services
 const queueService = require('./services/queueService');
 const PdfWorker = require('./workers/pdfWorker');
+const WebClipWorker = require('./workers/webClipWorker');
 
 // Import route factories
 const createAuthRoutes = require('./routes/authRoutes');
@@ -41,6 +42,7 @@ const createQuizResultRoutes = require('./routes/quizResultRoutes');
 const createKnowledgeGapRoutes = require('./routes/knowledgeGapRoutes');
 const createRoadmapRoutes = require('./routes/roadmapRoutes');
 const createPersonalReviewRoutes = require('./routes/personalReviewRoutes');
+const createExtensionRoutes = require('./routes/extensionRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -53,7 +55,17 @@ app.set('trust proxy', 1);
 
 // CORS Configuration - MUST be before helmet
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'https://aiinterviewcoach.id.vn',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://aiinterviewcoach.id.vn';
+    if (origin === frontendUrl || origin.startsWith('chrome-extension://')) {
+      return callback(null, true);
+    }
+
+    // Allow other origins for extension-based workflows; JWT still protects data routes.
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -108,6 +120,7 @@ app.use('/api/quiz-result', createQuizResultRoutes(container));
 app.use('/api/knowledge-gap', createKnowledgeGapRoutes(container));
 app.use('/api/roadmap', createRoadmapRoutes(container));
 app.use('/api/review', createPersonalReviewRoutes(container));
+app.use('/api/extension', createExtensionRoutes());
 
 // Health check
 app.get('/', (req, res) => {
@@ -168,6 +181,7 @@ app.use(errorHandler);
 
 // Initialize queue and worker
 let pdfWorker = null;
+let webClipWorker = null;
 
 const initializeBackgroundServices = async () => {
   try {
@@ -179,6 +193,11 @@ const initializeBackgroundServices = async () => {
     pdfWorker = new PdfWorker();
     await pdfWorker.start();
     logger.info('✅ PDF Worker started');
+
+    // Start Web Clip worker
+    webClipWorker = new WebClipWorker();
+    await webClipWorker.start();
+    logger.info('✅ Web Clip Worker started');
   } catch (error) {
     logger.error('Failed to initialize background services:', error);
     logger.warn('⚠️  App will continue without queue/worker functionality');
@@ -204,6 +223,11 @@ const gracefulShutdown = async (signal) => {
     if (pdfWorker) {
       await pdfWorker.stop();
       logger.info('✅ PDF Worker stopped');
+    }
+
+    if (webClipWorker) {
+      await webClipWorker.stop();
+      logger.info('✅ Web Clip Worker stopped');
     }
 
     // Disconnect queue service

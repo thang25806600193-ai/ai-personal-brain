@@ -1,0 +1,38 @@
+{
+	"manifest_version": 3,
+	"name": "AI Personal Brain Clipper",
+	"version": "1.0.0",
+	"description": "Highlight text from any webpage and save it into AI Personal Brain Knowledge Graph.",
+	"permissions": [
+		"storage",
+		"activeTab",
+		"scripting",
+		"contextMenus",
+		"identity",
+		"tabs"
+	],
+	"host_permissions": [
+		"https://aiinterviewcoach.id.vn/*",
+		"http://localhost:5000/*",
+		"https://*/*",
+		"http://*/*"
+	],
+	"background": {
+		"service_worker": "background.js"
+	},
+	"action": {
+		"default_title": "AI Brain Clipper",
+		"default_popup": "popup.html"
+	},
+	"content_scripts": [
+		{
+			"matches": [
+				"<all_urls>"
+			],
+			"js": [
+				"content.js"
+			],
+			"run_at": "document_idle"
+		}
+	]
+}

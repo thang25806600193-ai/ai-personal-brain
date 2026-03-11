@@ -83,7 +83,7 @@ class SubjectRepository extends BaseRepository {
       where: { document: { subjectId } },
       include: {
         document: {
-          select: { title: true, id: true },
+          select: { title: true, id: true, filePath: true },
         },
       },
     });

@@ -85,12 +85,15 @@ class SubjectService {
     // Tạo nodes cho documents
     documents.forEach((doc) => {
       const isPersonalNotes = doc.title === '📝 Ghi chú cá nhân' || doc.filePath === '__personal_notes__';
+      const isWebArticle = typeof doc.filePath === 'string' && doc.filePath.startsWith('__webclip__:');
+      const sourceUrl = isWebArticle ? doc.filePath.replace('__webclip__:', '') : null;
       nodes.push({
         id: `FILE_${doc.id}`,
         name: doc.title,
-        val: isPersonalNotes ? 25 : 30,
-        color: isPersonalNotes ? '#f59e0b' : '#ef4444', // Vàng cho personal notes, đỏ cho PDF
-        type: isPersonalNotes ? 'PersonalNotes' : 'Source',
+        val: isPersonalNotes ? 25 : (isWebArticle ? 26 : 30),
+        color: isPersonalNotes ? '#f59e0b' : (isWebArticle ? '#a78bfa' : '#ef4444'),
+        type: isPersonalNotes ? 'PersonalNotes' : (isWebArticle ? 'Web_Article' : 'Source'),
+        sourceUrl,
       });
     });
 
@@ -108,6 +111,10 @@ class SubjectService {
           documentIds: [concept.documentId],
           occurrences: 1,
           isFromPersonalNotes: concept.document?.filePath === '__personal_notes__' || concept.document?.title === '📝 Ghi chú cá nhân',
+          isFromWebArticle: typeof concept.document?.filePath === 'string' && concept.document.filePath.startsWith('__webclip__:'),
+          sourceUrls: typeof concept.document?.filePath === 'string' && concept.document.filePath.startsWith('__webclip__:')
+            ? [concept.document.filePath.replace('__webclip__:', '')]
+            : [],
         });
       } else {
         const existing = conceptMap.get(normalizedTerm);
@@ -117,6 +124,13 @@ class SubjectService {
         }
         if (!existing.documentIds.includes(concept.documentId)) {
           existing.documentIds.push(concept.documentId);
+        }
+        if (typeof concept.document?.filePath === 'string' && concept.document.filePath.startsWith('__webclip__:')) {
+          existing.isFromWebArticle = true;
+          const sourceUrl = concept.document.filePath.replace('__webclip__:', '');
+          if (!existing.sourceUrls.includes(sourceUrl)) {
+            existing.sourceUrls.push(sourceUrl);
+          }
         }
       }
     });
@@ -130,6 +144,9 @@ class SubjectService {
       if (conceptData.isFromPersonalNotes) {
         color = '#fbbf24'; // Vàng cho personal notes
         type = 'PersonalNote';
+      } else if (conceptData.isFromWebArticle) {
+        color = '#a78bfa';
+        type = 'WebConcept';
       } else if (conceptData.occurrences > 1) {
         color = '#3b82f6'; // Xanh cho concepts xuất hiện nhiều
         type = 'Concept';
@@ -152,6 +169,8 @@ class SubjectService {
         allPages: conceptData.pages,
         allDocumentIds: conceptData.documentIds,
         isPersonalNote: conceptData.isFromPersonalNotes,
+        isWebConcept: conceptData.isFromWebArticle,
+        sourceUrl: conceptData.sourceUrls[0] || null,
       });
     }
 
